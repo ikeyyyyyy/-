@@ -16,6 +16,8 @@ backend/data/*.log
 
 # 工作区辅助数据（本地记忆/草稿，不属于代码）
 .workbuddy/
+# 发布应用时由工具生成的标记文件
+*.genie
 
 # 编辑器 / 系统
 .DS_Store
@@ -30,5 +32,8 @@ coverage/
 _p*.html
 _smoke.html
 
-# 构建产物：单文件版 HTML 由 scripts/build-standalone.mjs 生成，不入库
+# 构建产物：由 scripts/build-standalone.mjs 生成，不入库
+#   dist/                    单文件版 HTML（直接发给人）
+#   standalone-web/          同一份内容的静态站目录（发布公网链接用）
 dist/
+standalone-web/

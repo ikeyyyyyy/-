@@ -88,7 +88,14 @@ if (leftovers.length) {
 fs.mkdirSync(OUT_DIR, { recursive: true });
 fs.writeFileSync(OUT, html, 'utf8');
 
+// 顺手产出一份给「发布为公网链接」用的静态目录（网站入口必须是 index.html）。
+// 两个文件内容完全一致，只是文件名不同：dist/ 那份给人直接发，这份给托管服务读。
+const WEB_DIR = path.join(root, 'standalone-web');
+fs.mkdirSync(WEB_DIR, { recursive: true });
+fs.writeFileSync(path.join(WEB_DIR, 'index.html'), html, 'utf8');
+
 const kb = (n) => `${(n / 1024).toFixed(0)} KB`;
 console.log(`已生成：${path.relative(root, OUT)}`);
+console.log(`  静态站入口：${path.relative(root, path.join(WEB_DIR, 'index.html'))}（可用于发布公网链接）`);
 console.log(`  大小 ${kb(Buffer.byteLength(html))}（其中 Chart.js 内联 ${kb(chartSrc.length)}）`);
 console.log('  外部依赖：0 个（可离线双击打开）');

@@ -149,10 +149,13 @@ cp .env.example .env      # 然后按需修改 OCR_ENGINE / PADDLEOCR_ENDPOINT /
 
 ```bash
 npm run build:standalone
-# 产物：dist/英语作文智能批阅-单文件版.html（约 300 KB，Chart.js 已内联，外部依赖 0 个）
+# 产物 1：dist/英语作文智能批阅-单文件版.html        （发文件用，约 300 KB）
+# 产物 2：standalone-web/index.html                  （发布公网链接用，内容相同）
 ```
 
-把这个文件拖进 QQ 聊天窗口发出去，对方**保存后双击**即可打开完整界面（含五维雷达图）。
+`dist/` 那个文件拖进 QQ 聊天窗口发出去，对方**保存后双击**即可打开完整界面（含五维雷达图）；
+`standalone-web/` 是一个只含 `index.html` 的静态目录，用「发布为应用」把它发布出去，
+就能得到一个手机也能直接点开的网址（本项目实测链接见仓库 Release 说明或向作者索取）。
 
 | 会做 | 不会做 |
 | --- | --- |
