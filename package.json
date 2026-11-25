@@ -9,9 +9,9 @@
     "start": "node backend/server.js",
     "dev": "node --watch backend/server.js",
     "lint": "node scripts/lint.js",
-    "test": "node --test \"tests/**/*.test.js\"",
-    "test:multimodal": "node --test \"tests/multimodal/*.test.js\"",
-    "test:analytics": "node --test \"tests/analytics/*.test.js\"",
+    "test": "node scripts/run-tests.mjs",
+    "test:multimodal": "node scripts/run-tests.mjs tests/multimodal",
+    "test:analytics": "node scripts/run-tests.mjs tests/analytics",
     "seed": "node sample_data/seed-analytics.js",
     "check": "npm run lint && npm test",
     "samples": "node scripts/make-sample-images.mjs"

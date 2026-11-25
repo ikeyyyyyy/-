@@ -439,6 +439,10 @@ npm run test:analytics
 npm run lint          # 语法检查（含 HTML 内联脚本）+ 密钥扫描
 ```
 
+> 测试入口是 `scripts/run-tests.mjs`：它自己递归收集测试文件再交给 `node --test`。
+> 原因很实际——`node --test` 对位置参数的解释在 Node 20 与 22 上相反（20 传 glob 不展开、22 传目录当模块），
+> 写死 `"tests/**/*.test.js"` 或 `tests` 都只能在一个版本上跑通。CI 用 Node 20 / 22 双矩阵，所以必须绕开这个差异。
+
 | 测试文件 | 覆盖 |
 | --- | --- |
 | `tests/multimodal/preprocess.test.js` | 标点/断词/段落还原/低置信度/不改写原意（13 例） |
