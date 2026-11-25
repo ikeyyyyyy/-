@@ -12,6 +12,7 @@
  */
 import http from 'node:http';
 import path from 'node:path';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { config } from './app/config.js';
 import { AppError, ERR } from './app/errors.js';
@@ -121,6 +122,24 @@ export async function startServer(opts = {}) {
 
 /* 直接运行时才监听端口（被 import 时不自动启动） */
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+/**
+ * 用系统默认浏览器打开页面。start.cmd / start.sh 会设置 EG_OPEN=1 来调用它，
+ * 这样「双击一下」就能从启动服务一路走到看到页面，不用手抄 URL。
+ * 打不开也不影响服务，最多是浏览器没弹出。
+ */
+function openBrowser(url) {
+  const [cmd, args] =
+    process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]] :
+    process.platform === 'darwin' ? ['open', [url]] :
+    ['xdg-open', [url]];
+  try {
+    spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref();
+  } catch (err) {
+    console.log(`  （自动打开浏览器失败，请手动访问 ${url}）`);
+  }
+}
+
 if (isMain) {
   startServer()
     .then(({ url }) => {
@@ -132,6 +151,7 @@ if (isMain) {
       console.log(`  ├─ 健康检查      ${url}/api/health`);
       console.log(`  ├─ OCR 引擎      ${config.ocr.engine}`);
       console.log(`  └─ 数据库        v${info.schema_version}，${info.submissions} 条提交\n`);
+      if (process.env.EG_OPEN === '1') openBrowser(`${url}/index.html`);
     })
     .catch(err => {
       console.error('启动失败：', err);
