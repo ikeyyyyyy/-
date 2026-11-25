@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>图片/PDF 作文批改 · English Essay Grader</title>
-<script src="https://cdn.tailwindcss.com"></script>
 <style>
   :root{
     --blue:#0ea5e9; --blue-dark:#0369a1; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
@@ -18,8 +17,21 @@
   .mark{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#fff;display:grid;place-items:center;font-size:1.15rem;}
   h1{font-size:1.12rem;margin:0;font-weight:800;letter-spacing:-.01em;}
   .sub{font-size:.74rem;color:var(--muted);margin:0;}
-  .nav-link{margin-left:auto;font-size:.76rem;color:var(--blue-dark);text-decoration:none;border:1px solid #bae6fd;background:#f0f9ff;padding:.3rem .7rem;border-radius:999px;}
+  .nav-link{font-size:.76rem;color:var(--blue-dark);text-decoration:none;border:1px solid #bae6fd;background:#f0f9ff;padding:.3rem .7rem;border-radius:999px;white-space:nowrap;}
   .nav-link:hover{background:#e0f2fe;}
+  /* 导航与连接状态 */
+  .nav-links{margin-left:auto;display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;}
+  .conn{font-size:.7rem;font-weight:700;padding:.24rem .55rem;border-radius:999px;background:#f1f5f9;color:#64748b;white-space:nowrap;}
+  .conn.on{background:#dcfce7;color:#15803d;}
+  .conn.off{background:#fee2e2;color:#b91c1c;}
+  /* 启动指引卡 */
+  .guide{text-align:left;max-width:620px;margin:0 auto;}
+  .guide ol{margin:.7rem 0 0;padding-left:1.25rem;font-size:.82rem;color:#334155;line-height:2;}
+  .guide .cmd{display:flex;align-items:center;gap:.4rem;background:#0f172a;color:#e2e8f0;border-radius:8px;padding:.35rem .6rem;font-family:ui-monospace,Consolas,monospace;font-size:.76rem;margin:.25rem 0 .1rem;}
+  .guide .cmd code{background:transparent;color:inherit;padding:0;}
+  .guide .cmd button{margin-left:auto;border:1px solid #334155;background:#1e293b;color:#cbd5e1;border-radius:6px;font-size:.68rem;padding:.1rem .45rem;cursor:pointer;}
+  .guide .cmd button:hover{background:#334155;}
+  .guide .tried{font-size:.7rem;color:#94a3b8;margin-top:.7rem;word-break:break-all;line-height:1.8;}
   .card{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 2px rgba(15,23,42,.04);}
   .card-pad{padding:1.1rem 1.15rem;}
   .grid{display:grid;grid-template-columns:minmax(0,0.92fr) minmax(0,1.08fr);gap:1.1rem;align-items:start;margin:1.1rem 0 2rem;}
@@ -86,8 +98,11 @@
       <h1>图片 / PDF 作文批改</h1>
       <p class="sub">多模态输入 · OCR · 图像与文本预处理 · 复用现有评分管线</p>
     </div>
-    <a class="nav-link" href="../../../index.html">← 返回文本批改</a>
-    <a class="nav-link" href="../LearningProfile/index.html">学习档案 →</a>
+    <div class="nav-links">
+      <a class="nav-link" href="../../../../index.html">← 文本批改</a>
+      <a class="nav-link" href="../LearningProfile/index.html">学习档案 →</a>
+      <span class="conn" id="engineState" title="后端连接状态">● 连接中…</span>
+    </div>
   </div>
 </header>
 
@@ -104,7 +119,7 @@
     <section class="card card-pad">
       <div class="row" style="justify-content:space-between;">
         <b style="font-size:.9rem;">① 上传作文图片 / PDF</b>
-        <span class="status" id="engineState">引擎检测中…</span>
+        <span class="status" id="ocrEngineLabel"></span>
       </div>
 
       <div class="drop" id="drop" style="margin-top:.7rem;" tabindex="0" role="button" aria-label="选择或拖入图片">
@@ -159,23 +174,96 @@
 <script>
 /* ============================================================================
  * 多模态上传页逻辑
- * - 只负责「采集 + 展示 + 调用接口」，不实现任何评分/评语逻辑
- * - API 基址：同源优先；file:// 打开时默认 http://localhost:8787
+ *
+ * 本页只做「采集 → 调接口 → 展示」，不实现任何评分 / 评语 / 预处理算法：
+ *   图片 → POST /api/multimodal/upload → 后端 OCR + 预处理 + 现有评分引擎
+ *
+ * 连接策略（本页最容易踩坑的地方）：
+ *   1. 依次尝试 ?api= 参数、localStorage、同源、http://127.0.0.1:8787、http://localhost:8787
+ *   2. 谁能返回 /api/health 就把谁当 API 基址（并记住）
+ *   3. 全都不通时显示「启动指引」，并每 3 秒自动重试 —— 服务一起来页面自己就连上，无需刷新
+ * 这样无论双击打开、被 IDE 预览面板托管、还是服务跑在别的端口，都能正常工作。
  * ========================================================================== */
-const API_BASE = (() => {
-  const q = new URLSearchParams(location.search).get('api');
-  if (q) return q.replace(/\/+$/, '');
-  try {
-    const saved = localStorage.getItem('eg_api_base');
-    if (saved) return saved.replace(/\/+$/, '');
-  } catch (e) {}
-  return location.protocol === 'file:' ? 'http://localhost:8787' : '';
+
+/* ---------------- 1. 后端连接管理 ---------------- */
+const NET = (() => {
+  const PORT = 8787;
+  const norm = s => String(s == null ? '' : s).trim().replace(/\/+$/, '');
+  const candidates = [];
+  const add = v => { const x = norm(v); if (!candidates.includes(x)) candidates.push(x); };
+
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('api')) add(qs.get('api'));
+  try { const saved = localStorage.getItem('eg_api_base'); if (saved) add(saved); } catch (e) {}
+
+  add('');                                   // 同源：页面由本服务托管时最快
+  add('http://127.0.0.1:' + PORT);
+  add('http://localhost:' + PORT);
+  // 通过局域网 IP 打开（比如用手机访问电脑上的服务）时，同一台机器的 8787 也试一下
+  if (location.protocol !== 'file:' && location.hostname && !/^(127\.0\.0\.1|localhost)$/.test(location.hostname)) {
+    add(location.protocol + '//' + location.hostname + ':' + PORT);
+  }
+
+  let base = null;
+
+  function signal(ms) {
+    // AbortSignal.timeout 在 Chrome/Edge 103+ 才有；老浏览器退回 AbortController
+    if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) return AbortSignal.timeout(ms);
+    const c = new AbortController();
+    setTimeout(() => c.abort(), ms);
+    return c.signal;
+  }
+
+  async function ping(b) {
+    try {
+      const res = await fetch(b + '/api/health', { signal: signal(2500), cache: 'no-store' });
+      if (!res.ok) return null;
+      const body = await res.json();
+      return body && body.ok ? body : null;
+    } catch (e) {
+      return null;                           // 连不上 / 超时 / 不是本项目的服务
+    }
+  }
+
+  /**
+   * 找到一个可用的后端。已连上的先验证一次，避免服务停了还在用旧地址发请求。
+   * 候选地址并行探测，命中后按 candidates 的先后顺序取（同源优先，其次本机默认端口）。
+   */
+  async function connect() {
+    if (base !== null) {
+      const health = await ping(base);
+      if (health) return { base, health };
+      base = null;                           // 之前那个服务已经停了
+    }
+    const results = await Promise.all(candidates.map(ping));
+    for (let i = 0; i < candidates.length; i++) {
+      if (results[i]) {
+        base = candidates[i];
+        try { localStorage.setItem('eg_api_base', base); } catch (e) {}
+        return { base, health: results[i] };
+      }
+    }
+    return null;
+  }
+
+  return {
+    connect,
+    candidates,
+    url: p => (base || '') + p,
+    get base() { return base; },
+    display() { return base ? base.replace(/^https?:\/\//, '') : '同源'; },
+    setBase(v) { base = norm(v); try { localStorage.setItem('eg_api_base', base); } catch (e) {} },
+    forget() { base = null; }
+  };
 })();
 
 const $ = id => document.getElementById(id);
+const EMPTY_HTML = $('empty').innerHTML;      // 记住默认空态，连上后要还原
 let selectedFile = null;
 let lastSubmission = null;
+let retryTimer = null;
 
+/* ---------------- 2. 通用工具 ---------------- */
 function toast(msg) {
   const t = $('toast');
   t.textContent = msg;
@@ -184,8 +272,25 @@ function toast(msg) {
   t._timer = setTimeout(() => t.classList.remove('show'), 2400);
 }
 
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('已复制：' + text);
+  } catch (e) {
+    toast('复制失败，请手动复制：' + text);
+  }
+}
+
+/** 带一次自动重连的请求：服务重启导致连接断掉时，会自动重新发现并重试一次 */
 async function api(path, options) {
-  const res = await fetch(API_BASE + path, options);
+  const send = () => fetch(NET.url(path), options);
+  let res;
+  try {
+    res = await send();
+  } catch (e) {
+    if (!(await NET.connect())) throw new Error('无法连接后端服务');
+    res = await send();
+  }
   let body = null;
   try { body = await res.json(); } catch (e) {}
   if (!res.ok) {
@@ -198,20 +303,95 @@ async function api(path, options) {
   return body;
 }
 
-/* ---------------- 初始化 ---------------- */
-async function init() {
-  try {
-    const health = await api('/api/health');
-    $('engineState').textContent = '服务已连接 · 引擎 ' + health.ocr_engine;
-  } catch (e) {
-    $('engineState').textContent = '未连接后端服务';
-    $('btnUpload').disabled = true;
-    $('empty').innerHTML = '<p style="font-size:1.6rem;margin:0;opacity:.4;">🔌</p>' +
-      '<p style="margin:.5rem 0 0;"><b>没有连上本地服务</b></p>' +
-      '<p style="font-size:.78rem;color:#94a3b8;margin:.4rem 0 0;">' +
-      '在项目根目录运行 <code>npm start</code>，然后刷新本页。<br>' +
-      '（本页需要后端做 OCR 与文件存储，纯前端无法独立完成）</p>';
+function setConn(on, text) {
+  const el = $('engineState');
+  el.textContent = '● ' + text;
+  el.className = 'conn ' + (on ? 'on' : 'off');
+  el.title = on
+    ? '已连接后端：' + NET.display()
+    : '未连接后端。双击项目根目录的 start.cmd，或在根目录运行 npm start';
+}
+
+/* ---------------- 3. 启动：先找后端，再初始化 ---------------- */
+async function boot(manual) {
+  clearTimeout(retryTimer);
+  if (manual) setConn(false, '连接中…');
+
+  const hit = await NET.connect();
+
+  if (!hit) {
+    setConn(false, '未连接');
+    renderOffline();
+    retryTimer = setTimeout(() => boot(false), 3000);   // 服务一起来就自动接上
     return;
+  }
+
+  setConn(true, '已连接 · ' + hit.health.ocr_engine);
+  $('ocrEngineLabel').textContent = 'OCR 引擎 ' + hit.health.ocr_engine;
+  $('examSelect').disabled = false;
+  await init();
+}
+
+/* ---------------- 4. 断线态：不让用户走进死胡同 ---------------- */
+function renderOffline() {
+  $('btnUpload').disabled = true;
+  $('ocrEngineLabel').textContent = '';
+  // 没连上时下拉是空的，看起来像坏了；明确置灰并给出原因
+  $('examSelect').disabled = true;
+  $('examSelect').innerHTML = '<option value="">连接成功后自动加载六套评分体系</option>';
+  $('empty').hidden = false;
+  $('result').hidden = true;
+
+  const tried = NET.candidates.map(c => c || '(同源)').join(' · ');
+
+  $('empty').innerHTML =
+    '<div class="guide">' +
+      '<div style="text-align:center;">' +
+        '<p style="font-size:1.6rem;margin:0;opacity:.35;">🔌</p>' +
+        '<p style="margin:.45rem 0 0;"><b>还没有连上本地服务</b></p>' +
+        '<p style="font-size:.78rem;color:#94a3b8;margin:.3rem 0 0;">OCR 与文件存储跑在后端，这一页没法脱离服务独立工作</p>' +
+      '</div>' +
+      '<ol>' +
+        '<li><b>启动服务</b>（任选一种）' +
+          '<div class="cmd"><code>start.cmd</code><span style="color:#94a3b8;font-size:.7rem;margin-left:.3rem;">Windows 双击运行</span><button data-copy="start.cmd">复制</button></div>' +
+          '<div class="cmd"><code>npm start</code><button data-copy="npm start">复制</button></div>' +
+        '</li>' +
+        '<li>等终端出现「English Essay Grader 已启动」</li>' +
+        '<li>回到本页 —— <b>不用刷新</b>，几秒内会自动连上</li>' +
+      '</ol>' +
+      '<div class="row" style="margin-top:.9rem;">' +
+        '<button class="btn btn-primary" id="btnRetry">立即重试</button>' +
+        '<span class="status" id="retryHint">每 3 秒自动重试中…</span>' +
+      '</div>' +
+      '<details style="margin-top:.9rem;"><summary>高级：自定义服务地址（改了端口 / 局域网访问）</summary>' +
+        '<div class="row" style="margin-top:.5rem;">' +
+          '<input type="text" id="apiInput" placeholder="http://127.0.0.1:8787" value="' + (NET.base || '') + '" style="flex:1;min-width:190px;">' +
+          '<button class="btn btn-ghost" id="btnSaveApi">用这个地址</button>' +
+        '</div>' +
+        '<p class="tried">地址会记在浏览器里，下次自动使用。</p>' +
+      '</details>' +
+      '<p class="tried">已尝试：' + tried + '</p>' +
+    '</div>';
+
+  $('btnRetry').onclick = () => boot(true);
+  $('btnSaveApi').onclick = async () => {
+    const v = ($('apiInput').value || '').trim();
+    if (!v) { toast('请填写服务地址，例如 http://127.0.0.1:8787'); return; }
+    NET.setBase(v);
+    await boot(true);
+    if (NET.base === null) toast('该地址也连不上，检查一下服务是否在这个端口');
+  };
+  $('empty').querySelectorAll('[data-copy]').forEach(b => {
+    b.onclick = () => copyText(b.getAttribute('data-copy'));
+  });
+}
+
+/* ---------------- 5. 连接成功后的初始化 ---------------- */
+async function init() {
+  // 只在没有结果时还原空态，避免点连接徽标把已渲染的结果盖掉
+  if ($('result').hidden) {
+    $('empty').innerHTML = EMPTY_HTML;
+    $('empty').hidden = false;
   }
 
   // 评分体系下拉：数据来自现有引擎，不在前端重复维护一份
@@ -244,7 +424,7 @@ async function init() {
   }
 }
 
-/* ---------------- 选择文件 ---------------- */
+/* ---------------- 6. 选择文件 ---------------- */
 $('btnPick').onclick = () => $('fileInput').click();
 $('btnCamera').onclick = () => $('cameraInput').click();
 $('drop').onclick = () => $('fileInput').click();
@@ -289,8 +469,8 @@ function escapeHtml(s) {
 $('btnUseSample').onclick = async () => {
   const name = 'printed_sample.png';
   try {
-    const res = await fetch(API_BASE + '/sample_data/images/' + name);
-    if (!res.ok) throw new Error('取不到 demo 图片');
+    const res = await fetch(NET.url('/sample_data/images/' + name), { cache: 'no-store' });
+    if (!res.ok) throw new Error('取不到 demo 图片（请确认服务已启动）');
     const blob = await res.blob();
     setFile(new File([blob], name, { type: 'image/png' }));
     toast('已载入 demo 印刷体图片（夹具回放用）');
@@ -299,7 +479,7 @@ $('btnUseSample').onclick = async () => {
   }
 };
 
-/* ---------------- 上传（XHR 才有进度） ---------------- */
+/* ---------------- 7. 上传（XHR 才有进度） ---------------- */
 $('btnUpload').onclick = () => {
   if (!selectedFile) { toast('请先选择文件'); return; }
 
@@ -315,7 +495,7 @@ $('btnUpload').onclick = () => {
   $('uploadState').textContent = '上传中…';
 
   const xhr = new XMLHttpRequest();
-  xhr.open('POST', API_BASE + '/api/multimodal/upload');
+  xhr.open('POST', NET.url('/api/multimodal/upload'));
   xhr.upload.onprogress = e => {
     if (e.lengthComputable) {
       const pct = Math.round((e.loaded / e.total) * 100);
@@ -340,11 +520,14 @@ $('btnUpload').onclick = () => {
       showError(body, xhr.status);
     }
   };
-  xhr.onerror = () => {
+  xhr.onerror = async () => {
     $('btnUpload').disabled = false;
     $('barWrap').hidden = true;
     $('uploadState').textContent = '网络错误';
-    toast('上传失败：无法连接服务');
+    // 可能是服务重启了：重新发现一次，提示用户再点一次即可
+    const still = await NET.connect();
+    setConn(!!still, still ? '已连接 · ' + still.health.ocr_engine : '未连接');
+    toast(still ? '连接已恢复，请再点一次「上传并批改」' : '上传失败：服务未启动');
   };
   xhr.send(form);
 };
@@ -367,7 +550,7 @@ function showError(body, status) {
     '真实拍照请按 <code>.env.example</code> 配置 OCR 引擎。</p>';
 }
 
-/* ---------------- 渲染结果 ---------------- */
+/* ---------------- 8. 渲染结果 ---------------- */
 function render(sub) {
   const g = sub.grading;
   $('empty').hidden = true;
@@ -421,7 +604,7 @@ function render(sub) {
       '<tr><th>OCR 引擎</th><td>' + escapeHtml(sub.ocr_engine || '-') + '</td></tr>' +
       '<tr><th>置信度</th><td>' + (sub.ocr_confidence === null ? '未提供' : sub.ocr_confidence.toFixed(3)) +
         '（阈值 ' + (rpt.confidence_threshold ?? '-') + '）</td></tr>' +
-      '<tr><th>原图</th><td><a href="' + escapeHtml(sub.original_url || '#') + '" target="_blank" rel="noopener">查看原图</a> · ' +
+      '<tr><th>原图</th><td><a href="' + escapeHtml(NET.url(sub.original_url || '#')) + '" target="_blank" rel="noopener">查看原图</a> · ' +
         (sub.bytes ? (sub.bytes / 1024).toFixed(0) + ' KB' : '-') + '</td></tr>' +
       '<tr><th>SHA-256</th><td><code>' + escapeHtml((sub.sha256 || '').slice(0, 16)) + '…</code>（用于追溯同一张图）</td></tr>' +
       '<tr><th>段落 / 词数</th><td>' + (rpt.stats ? rpt.stats.paragraphs + ' 段 / ' + rpt.stats.words + ' 词' : '-') + '</td></tr>' +
@@ -465,7 +648,9 @@ async function confirmText(id) {
   }
 }
 
-init();
+/* ---------------- 9. 启动 ---------------- */
+$('engineState').onclick = () => boot(true);
+boot(true);
 </script>
 </body>
 </html>
