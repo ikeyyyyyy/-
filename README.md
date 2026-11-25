@@ -308,8 +308,8 @@ cp .env.example .env      # 然后按需修改 OCR_ENGINE / PADDLEOCR_ENDPOINT /
 ### 6.2 怎么用
 
 ```bash
-npm start                 # 启动服务（默认 http://localhost:8787）
-# 打开 http://localhost:8787/frontend/src/pages/MultimodalUpload/index.html
+npm start                 # 启动服务（默认 http://127.0.0.1:8787）
+# 打开 http://127.0.0.1:8787/frontend/src/pages/MultimodalUpload/index.html
 ```
 
 页面支持：拍照（`capture`）/ 拖拽 / 选择文件、上传进度条、识别结果**可编辑**后重新评分、原图回看。
@@ -377,7 +377,7 @@ npm start                 # 启动服务（默认 http://localhost:8787）
 ```bash
 npm start                      # 终端 1
 npm run seed                   # 终端 2：生成 anon_demo_01 的 5 篇 demo 提交
-# 打开 http://localhost:8787/frontend/src/pages/LearningProfile/index.html?student=anon_demo_01
+# 打开 http://127.0.0.1:8787/frontend/src/pages/LearningProfile/index.html?student=anon_demo_01
 ```
 
 seed 数据（`sample_data/essays.json`）是**本项目自己写的 5 篇 CET4 作文**，质量由低到高递进，用于演示趋势：
@@ -446,6 +446,9 @@ npm run lint          # 语法检查（含 HTML 内联脚本）+ 密钥扫描
 | `tests/multimodal/api.test.js` | 上传→评分、原图回取、人工确认、422/415/400/404、旧端点不变（9 例） |
 | `tests/analytics/aggregate.test.js` | 空态/单篇/趋势/Top3/hint 两种口径/旧数据兼容（13 例） |
 | `tests/analytics/api.test.js` | 5 篇入库→仪表盘/档案/时间线、幂等、隐私删除（11 例） |
+| `tests/pages/navigation.test.js` | 三页跨页入口都带 `data-page`、路由路径真实存在、srcdoc 兼容逻辑仍在（3 例） |
+
+合计 **56 个测试**（`npm test` 一次跑完，约 1 秒）。
 
 CI（`.github/workflows/ci.yml`）在 Node 20 / 22 上跑 `npm run lint` + `npm test`，不需要装任何依赖。
 
