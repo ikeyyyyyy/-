@@ -1,0 +1,36 @@
+{
+  "note": "学习分析模块的 demo 数据：同一个匿名学生（anon_demo_01）在 5 个时间点提交的 5 篇 CET4 作文，质量从低到高递进。文本为本项目自行编写，不是真实学生作业，也不是官方评分样本；分数由现有评分引擎实时计算，本文件未预置任何分数。",
+  "student_id": "anon_demo_01",
+  "submissions": [
+    {
+      "label": "W1 · 起步（问题密集）",
+      "day_offset": -28,
+      "exam_key": "cet4",
+      "text": "Nowadays many student take part time job in their free time. I think it is good. It is a good oppotunity to learn. Because student can get money and experience. They can also learn how to talk with other people. But some student spend too much time on the job, so they forget study. This is bad. In my opinion, student should take a job that near the school, and they should not work in the evening. If we can do this, we can get both money and good study. So part time job is good for us."
+    },
+    {
+      "label": "W2 · 有结构但语言薄弱",
+      "day_offset": -21,
+      "exam_key": "cet4",
+      "text": "Nowadays many students take part-time jobs in their free time. In my opinion, it is a good choice.\n\nFirst, students can earn money by themselves, and they will understand that money does not come easily. Second, a part-time job gives students real experience and knowlege. For example, a student who works in a restaurant must learn how to communicate with a angry customer. However, some students spend too much time on their job and forget their study. So they should keep a balance.\n\nIn conclusion, part time job is good for students if they manage their time well."
+    },
+    {
+      "label": "W3 · 中等（衔接与例证到位）",
+      "day_offset": -14,
+      "exam_key": "cet4",
+      "text": "Nowadays many college students take part-time jobs in their spare time. Some people think it wastes time, but I believe it brings more benefits.\n\nTo begin with, students can earn money by themselves, which makes them understand that money does not come easily. Moreover, a part-time job offers real experience that textbooks cannot provide. For example, a student who works in a restaurant has to deal with different customers, and this trains his patience.\n\nAdmittedly, some students spend too much time on their jobs and forget their study. Therefore, they should keep a balance between work and study.\n\nIn conclusion, part-time jobs are beneficial as long as students manage their time well."
+    },
+    {
+      "label": "W4 · 良好（复杂句开始出现）",
+      "day_offset": -7,
+      "exam_key": "cet4",
+      "text": "Nowadays an increasing number of college students take part-time jobs in their spare time. Although some people regard this as a waste of time, I believe it brings more benefits than harms.\n\nTo begin with, earning money by themselves makes students understand that money does not come easily. Moreover, a part-time job offers practical experience that textbooks cannot provide. For instance, a student working in a restaurant has to deal with customers who hold different expectations, which gradually trains his patience and communication skills.\n\nAdmittedly, those who spend too much time on their jobs may neglect their study. Therefore, students should keep a balance and give priority to their academic work.\n\nIn conclusion, part-time jobs are beneficial as long as they are arranged reasonably."
+    },
+    {
+      "label": "W5 · 优秀（论证完整、句式多样）",
+      "day_offset": -2,
+      "exam_key": "cet4",
+      "text": "Nowadays a lot of college students take part-time jobs in their spare time. While some regard this trend as a waste of time, I would argue that carefully arranged part-time work brings more benefits than harms.\n\nTo begin with, earning money by themselves makes students realize that money does not come easily, and this awareness tends to make them more responsible in spending. Moreover, a part-time job offers practical experience that textbooks cannot provide.\n\nA student working in a restaurant, for instance, has to deal with customers whose expectations differ sharply, which gradually trains his patience and his ability to communicate under pressure. Admittedly, those who devote excessive hours to their jobs may neglect their academic work. Therefore, what matters is not whether to work but how to arrange it: a sensible schedule allows students to keep both their income and their grades.\n\nIn conclusion, part-time jobs are beneficial as long as they are planned with clear priorities."
+    }
+  ]
+}

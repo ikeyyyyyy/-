@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>学习档案 · English Essay Grader</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{--blue:#0ea5e9;--blue-dark:#0369a1;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--bg:#f6fbff;--green:#15803d;--amber:#b45309;--violet:#7c3aed;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Inter","Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;line-height:1.65;}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 1rem;}
+  header.site{background:#fff;border-bottom:1px solid var(--line);}
+  .hdr{display:flex;align-items:center;gap:.75rem;padding:1rem 0;flex-wrap:wrap;}
+  .mark{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#fff;display:grid;place-items:center;font-size:1.15rem;}
+  h1{font-size:1.12rem;margin:0;font-weight:800;}
+  .sub{font-size:.74rem;color:var(--muted);margin:0;}
+  .nav-link{font-size:.76rem;color:var(--blue-dark);text-decoration:none;border:1px solid #bae6fd;background:#f0f9ff;padding:.3rem .7rem;border-radius:999px;}
+  .nav-link:hover{background:#e0f2fe;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 2px rgba(15,23,42,.04);}
+  .card-pad{padding:1.05rem 1.15rem;}
+  .ctrl{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin:1rem 0 .9rem;}
+  select,input{height:36px;border:1px solid #cbd5e1;border-radius:9px;padding:0 .6rem;font-size:.82rem;background:#fff;color:var(--ink);}
+  select:focus,input:focus{outline:2px solid #bae6fd;border-color:#38bdf8;}
+  .btn{border:none;border-radius:9px;padding:.5rem 1rem;font-size:.82rem;font-weight:700;cursor:pointer;}
+  .btn-primary{background:var(--blue);color:#fff;} .btn-primary:hover{background:var(--blue-dark);}
+  .btn-ghost{background:#f1f5f9;color:#334155;} .btn-ghost:hover{background:#e2e8f0;}
+  .grid{display:grid;gap:.95rem;}
+  .g2{grid-template-columns:1fr 1fr;}
+  .g3{grid-template-columns:repeat(3,1fr);}
+  @media(max-width:900px){.g2,.g3{grid-template-columns:1fr;}}
+  .sec-title{font-size:.85rem;font-weight:800;margin:0 0 .6rem;display:flex;align-items:center;gap:.4rem;}
+  .sec-title em{font-style:normal;font-weight:500;color:#94a3b8;font-size:.7rem;}
+  .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;}
+  @media(max-width:900px){.kpi{grid-template-columns:1fr 1fr;}}
+  .kpi .box{background:#f8fcff;border:1px solid #e0f2fe;border-radius:12px;padding:.7rem .8rem;}
+  .kpi .t{font-size:.68rem;color:#94a3b8;font-weight:700;letter-spacing:.03em;}
+  .kpi .v{font-size:1.4rem;font-weight:800;line-height:1.25;}
+  .kpi .n{font-size:.7rem;color:var(--muted);}
+  .chart-box{position:relative;height:240px;}
+  .chart-box.sm{height:180px;}
+  .tag{display:inline-block;font-size:.68rem;font-weight:700;padding:.1rem .45rem;border-radius:999px;background:#e0f2fe;color:#0369a1;}
+  .tag.up{background:#dcfce7;color:#15803d;} .tag.down{background:#ffedd5;color:#b45309;} .tag.flat{background:#eef2f7;color:#475569;}
+  .err-card{border:1px solid #fecdd3;background:#fff7f8;border-radius:12px;padding:.75rem .85rem;}
+  .err-card .rank{font-size:.68rem;font-weight:800;color:#be123c;letter-spacing:.08em;}
+  .err-card .name{font-size:1rem;font-weight:800;margin:.1rem 0 .15rem;}
+  .err-card .meta{font-size:.72rem;color:#64748b;}
+  .err-card ul{margin:.35rem 0 0;padding-left:1.05rem;font-size:.72rem;color:#475569;line-height:1.7;}
+  .empty{padding:3rem 1rem;text-align:center;color:#94a3b8;}
+  table.tl{width:100%;border-collapse:collapse;font-size:.78rem;}
+  table.tl th{text-align:left;font-size:.7rem;color:#94a3b8;font-weight:700;padding:.45rem .5rem;border-bottom:1px solid var(--line);white-space:nowrap;}
+  table.tl td{padding:.45rem .5rem;border-bottom:1px solid #f1f5f9;color:#334155;}
+  table.tl tr:hover td{background:#f8fcff;}
+  .hint-card{background:#f0f9ff;border:1px solid #bae6fd;border-left:4px solid var(--blue);border-radius:10px;padding:.7rem .85rem;font-size:.8rem;color:#0c4a6e;display:flex;gap:.6rem;align-items:flex-start;}
+  .hint-card .x{margin-left:auto;border:none;background:transparent;color:#7dd3fc;font-size:1.1rem;cursor:pointer;line-height:1;}
+  ul.advice{margin:0;padding-left:1.1rem;font-size:.8rem;color:#334155;line-height:1.8;}
+  ul.advice b{color:#0f172a;}
+  code{background:#eef2f7;padding:.05rem .28rem;border-radius:4px;font-size:.75rem;}
+  footer.site{text-align:center;font-size:.72rem;color:var(--muted);padding:1.4rem 0 2.4rem;border-top:1px solid var(--line);margin-top:2rem;}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);background:#0f172a;color:#fff;padding:.55rem 1rem;border-radius:10px;font-size:.8rem;opacity:0;pointer-events:none;transition:.2s;z-index:99;}
+  .toast.show{opacity:1;transform:translate(-50%,0);}
+  .note{font-size:.72rem;color:#94a3b8;line-height:1.7;margin:.5rem 0 0;}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap hdr">
+    <div class="mark">📈</div>
+    <div>
+      <h1>学习档案 · 个性化写作画像</h1>
+      <p class="sub">跨篇趋势 · 错误类型分布 · 顽固错误 Top 3 · 升档建议</p>
+    </div>
+    <a class="nav-link" href="../../../index.html">← 文本批改</a>
+    <a class="nav-link" href="../MultimodalUpload/index.html">图片批改 →</a>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="ctrl">
+    <select id="studentSelect" style="min-width:190px;"></select>
+    <input id="studentInput" placeholder="或直接输入匿名学号，如 anon_demo_01" style="min-width:230px;">
+    <button class="btn btn-primary" id="btnLoad">加载档案</button>
+    <button class="btn btn-ghost" id="btnReload">刷新</button>
+    <button class="btn btn-ghost" id="btnDelete" title="删除该学生的全部记录与原图">删除该学生数据</button>
+    <span class="note" id="apiState" style="margin-left:auto;"></span>
+  </div>
+
+  <div id="root"></div>
+</div>
+
+<footer class="site">
+  <div><b>English Essay Grader</b> · 学习分析模块 · 只读历史批改记录做聚合，不影响任何评分结果</div>
+  <div style="margin-top:.25rem;">匿名学号，不含姓名/邮箱 · 分析数据来自真实批改记录，demo 数据标注为 seeded · MIT License</div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================================
+ * 学习档案页
+ * - 数据全部来自 /api/analytics/*，页面只做可视化，不含任何打分/聚合算法
+ * - 所有 chart 在数据为空时显示占位，不报错
+ * ========================================================================== */
+const API_BASE = (() => {
+  const q = new URLSearchParams(location.search).get('api');
+  if (q) return q.replace(/\/+$/, '');
+  try {
+    const saved = localStorage.getItem('eg_api_base');
+    if (saved) return saved.replace(/\/+$/, '');
+  } catch (e) {}
+  return location.protocol === 'file:' ? 'http://localhost:8787' : '';
+})();
+
+const $ = id => document.getElementById(id);
+const charts = {};
+const PALETTE = ['#0ea5e9','#22c55e','#f59e0b','#8b5cf6','#f43f5e','#14b8a6','#64748b','#a855f7'];
+
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2400);
+}
+async function api(path, init) {
+  const res = await fetch(API_BASE + path, init);
+  let body = null;
+  try { body = await res.json(); } catch (e) {}
+  if (!res.ok) throw new Error((body && body.error && body.error.message) || ('HTTP ' + res.status));
+  return body;
+}
+const esc = s => String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mmdd = iso => (iso || '').slice(5, 10);
+
+/* ---------------- 初始化 ---------------- */
+async function init() {
+  const params = new URLSearchParams(location.search);
+  const preset = params.get('student') || (function () {
+    try { return localStorage.getItem('eg_student_id'); } catch (e) { return null; }
+  })();
+
+  try {
+    const data = await api('/api/analytics/students');
+    $('apiState').textContent = '服务已连接';
+    const opts = data.students.map(s =>
+      '<option value="' + esc(s.student_id) + '">' + esc(s.student_id) + '（' + s.submissions + ' 篇）</option>'
+    );
+    $('studentSelect').innerHTML = opts.length
+      ? opts.join('')
+      : '<option value="">（暂无学生记录，先运行 npm run seed）</option>';
+  } catch (e) {
+    $('apiState').textContent = '未连接服务';
+    $('studentSelect').innerHTML = '<option value="">（服务未启动）</option>';
+    $('root').innerHTML = '<div class="card empty"><p style="font-size:1.5rem;margin:0;opacity:.4;">🔌</p>' +
+      '<p style="margin:.5rem 0 0;"><b>没有连上本地服务</b></p>' +
+      '<p style="font-size:.8rem;margin:.35rem 0 0;">请在项目根目录运行 <code>npm start</code>，' +
+      '再执行 <code>npm run seed</code> 生成演示数据。</p></div>';
+    return;
+  }
+
+  if (preset) {
+    $('studentInput').value = preset;
+    if ([...$('studentSelect').options].some(o => o.value === preset)) $('studentSelect').value = preset;
+  } else if ($('studentSelect').value) {
+    $('studentInput').value = $('studentSelect').value;
+  }
+
+  $('btnLoad').onclick = () => load($('studentInput').value.trim() || $('studentSelect').value);
+  $('btnReload').onclick = () => load($('studentSelect').value || $('studentInput').value.trim());
+  $('studentSelect').onchange = () => { $('studentInput').value = $('studentSelect').value; load($('studentSelect').value); };
+  $('btnDelete').onclick = removeStudent;
+
+  if ($('studentInput').value) load($('studentInput').value);
+  else renderEmpty('anon_demo_01');
+}
+
+function renderEmpty(sid) {
+  $('root').innerHTML =
+    '<div class="card empty" style="margin-top:.5rem;">' +
+    '<p style="font-size:1.7rem;margin:0;opacity:.4;">📭</p>' +
+    '<p style="margin:.5rem 0 0;"><b>暂无历史数据</b></p>' +
+    '<p style="font-size:.8rem;margin:.4rem 0 0;line-height:1.9;">' +
+    '一个学生至少要有 2 篇批改记录才能看趋势与顽固错误。<br>' +
+    '生成演示数据：<code>npm run seed</code>，然后用学号 <code>' + esc(sid) + '</code> 加载。' +
+    '</p></div>';
+}
+
+/* ---------------- 加载 ---------------- */
+async function load(sid) {
+  if (!sid) { toast('请先选择或输入学号'); return; }
+  $('root').innerHTML = '<div class="card empty">加载中…</div>';
+  try {
+    const [dash, profile, timeline] = await Promise.all([
+      api('/api/analytics/students/' + encodeURIComponent(sid) + '/dashboard'),
+      api('/api/analytics/students/' + encodeURIComponent(sid) + '/profile'),
+      api('/api/analytics/students/' + encodeURIComponent(sid) + '/timeline')
+    ]);
+    if (dash.empty) { renderEmpty(sid); return; }
+    render(sid, dash, profile, timeline);
+  } catch (e) {
+    $('root').innerHTML = '<div class="card empty">加载失败：' + esc(e.message) + '</div>';
+  }
+}
+
+/* ---------------- 渲染 ---------------- */
+function render(sid, dash, profile, timeline) {
+  const st = dash.score;
+  const deltaTxt = st.delta === null ? '—' : (st.delta > 0 ? '+' : '') + st.delta + ' pt';
+  const trendTag = t => '<span class="tag ' + t + '">' + ({ up: '↑ 上升', down: '↓ 下降', flat: '→ 持平', insufficient: '样本不足' }[t] || t) + '</span>';
+
+  $('root').innerHTML =
+    /* KPI */
+    '<div class="card card-pad" style="margin-bottom:.95rem;">' +
+      '<div class="kpi">' +
+        '<div class="box"><div class="t">提交篇数</div><div class="v">' + dash.submission_count + '</div><div class="n">' + mmdd(dash.range.from) + ' → ' + mmdd(dash.range.to) + '</div></div>' +
+        '<div class="box"><div class="t">最新得分</div><div class="v">' + (st.latest.total ?? '—') + '<span style="font-size:.8rem;color:#94a3b8;"> / ' + (st.latest.total_max ?? '—') + '</span></div><div class="n">' + esc((st.latest.band_label || '').split('（')[0]) + '</div></div>' +
+        '<div class="box"><div class="t">首篇 → 最新</div><div class="v">' + deltaTxt + '</div><div class="n">' + (st.first.percent ?? '—') + '% → ' + (st.latest.percent ?? '—') + '%</div></div>' +
+        '<div class="box"><div class="t">趋势判断</div><div class="v" style="font-size:1rem;padding-top:.3rem;">' + trendTag(st.trend) + '</div><div class="n">按首末两篇对比</div></div>' +
+      '</div>' +
+      '<p class="note">' + esc(profile.summary) + '</p>' +
+    '</div>' +
+
+    /* 跨篇提示 */
+    (profile.hint.available
+      ? '<div class="card card-pad" style="margin-bottom:.95rem;">' +
+          '<div class="sec-title">评语模块的跨篇提示 <em>Cross-essay hint</em></div>' +
+          '<div class="hint-card" id="hintCard"><div><div>' + esc(profile.hint.text) + '</div>' +
+          '<div class="note" style="margin-top:.2rem;">实际展示位置：文本批改页评语区顶部（可关闭，关闭后不再打扰）</div></div>' +
+          '<button class="x" id="hintX" title="关闭预览">×</button></div></div>'
+      : '') +
+
+    /* 趋势图 */
+    '<div class="grid g2" style="margin-bottom:.95rem;">' +
+      '<div class="card card-pad"><div class="sec-title">评分趋势 <em>Score trend</em></div>' +
+        '<div class="chart-box"><canvas id="cScore"></canvas></div>' +
+        '<p class="note">纵轴为得分率（得分 / 满分），避免切换体系后满分不同无法比较。</p></div>' +
+      '<div class="card card-pad"><div class="sec-title">错误类型分布 <em>Error categories</em></div>' +
+        '<div class="chart-box"><canvas id="cErr"></canvas></div>' +
+        '<p class="note">堆叠柱为该篇各类问题的命中次数（同一类规则重复命中会累加）。</p></div>' +
+    '</div>' +
+
+    /* 顽固错误 + 优势 */
+    '<div class="grid g2" style="margin-bottom:.95rem;">' +
+      '<div class="card card-pad"><div class="sec-title">顽固错误 Top 3 <em>Recurring errors</em></div>' +
+        (profile.stubborn_errors.length
+          ? '<div class="grid" style="gap:.6rem;">' + profile.stubborn_errors.map((s, i) =>
+              '<div class="err-card"><div class="rank">TOP ' + (i + 1) + '</div>' +
+              '<div class="name">' + esc(s.label) + ' ' + trendTag(s.trend) + '</div>' +
+              '<div class="meta">' + s.submissions + '/' + profile.sample_size + ' 篇出现 · 累计 ' + s.occurrences + ' 次 · 最近 ' + mmdd(s.last_seen) + '</div>' +
+              (s.examples && s.examples.length ? '<ul>' + s.examples.slice(0, 2).map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '') +
+              '</div>').join('') + '</div>'
+          : '<p class="note">还没有重复出现的错误类型（或历史不足 2 篇）。</p>') +
+        '<p class="note">判定口径：同一类错误出现在 ≥2 篇提交中，按出现篇数排序，最多 3 条。</p>' +
+      '</div>' +
+      '<div class="card card-pad"><div class="sec-title">优势与短板 <em>Strengths &amp; focus</em></div>' +
+        '<div style="font-size:.8rem;color:#334155;line-height:1.9;">' +
+          '<div><b>优势项：</b>' + (profile.strengths.length
+            ? profile.strengths.map(s => esc(s.zh) + '（均值 ' + s.average + '/10）').join('、')
+            : '暂无（均值均低于阈值）') + '</div>' +
+          '<div><b>最需补：</b>' + (profile.focus ? esc(profile.focus.zh) + '（均值 ' + profile.focus.average + '/10）' : '—') + '</div>' +
+          '<div><b>五维均值：</b>' + dash.dimensions.keys.map(k =>
+            esc(k) + ' ' + (dash.dimensions.averages[k] ?? '—')).join(' · ') + '</div>' +
+        '</div>' +
+        '<div class="sec-title" style="margin-top:.9rem;">升档建议 <em>Next steps</em></div>' +
+        (profile.band_up_advice.length
+          ? '<ul class="advice">' + profile.band_up_advice.map(a =>
+              '<li>' + esc(a.text) + '<div class="note">依据：' + esc(a.based_on) + '</div></li>').join('') + '</ul>'
+          : '<p class="note">暂无可生成建议（历史数据不足）。</p>') +
+      '</div>' +
+    '</div>' +
+
+    /* 词汇 + 结构 */
+    '<div class="grid g2" style="margin-bottom:.95rem;">' +
+      '<div class="card card-pad"><div class="sec-title">词汇多样性 <em>Lexical diversity</em></div>' +
+        '<div class="chart-box sm"><canvas id="cTtr"></canvas></div>' +
+        '<p class="note">TTR = 不同实词数 / 实词总数，越低说明越爱重复同一批词。均值 ' + (dash.lexical_diversity.average_ttr ?? '—') + '</p></div>' +
+      '<div class="card card-pad"><div class="sec-title">结构完整度 <em>Structure</em></div>' +
+        '<div class="chart-box sm"><canvas id="cStruct"></canvas></div>' +
+        '<p class="note">取"篇章结构"维度归一化分（0–10）；平均衔接词 ' + (dash.structure.averages.transitions ?? '—') +
+        ' 种、平均复杂句 ' + (dash.structure.averages.complex_sentences ?? '—') + ' 句。</p></div>' +
+    '</div>' +
+
+    /* 时间线 */
+    '<div class="card card-pad">' +
+      '<div class="sec-title">提交时间线 <em>Timeline</em></div>' +
+      '<div style="overflow-x:auto;"><table class="tl"><thead><tr>' +
+        '<th>时间</th><th>体系</th><th>得分</th><th>得分率</th><th>档位</th><th>来源</th><th>状态</th>' +
+      '</tr></thead><tbody>' +
+      timeline.items.map(it =>
+        '<tr><td>' + esc((it.at || '').slice(0, 10)) + '</td>' +
+        '<td>' + esc(it.exam_key || '—') + '</td>' +
+        '<td>' + (it.total ?? '—') + ' / ' + (it.total_max ?? '—') + '</td>' +
+        '<td>' + (it.percent ?? '—') + '%</td>' +
+        '<td>' + esc((it.band_label || '').split('（')[0]) + '</td>' +
+        '<td>' + (it.source_type === 'text' ? '文本' : it.source_type === 'pdf' ? 'PDF' : '图片') + '</td>' +
+        '<td>' + (it.needs_review ? '<span class="tag down">待复核</span>' : it.confirmed ? '<span class="tag up">已确认</span>' : '—') + '</td></tr>'
+      ).join('') +
+      '</tbody></table></div>' +
+      '<p class="note">只读记录；删除学号会连同记录与上传原图一并清除（隐私）。</p>' +
+    '</div>';
+
+  if (profile.hint.available) {
+    $('hintX').onclick = () => { $('hintCard').style.display = 'none'; toast('已关闭预览（批改页的提示需在那边关闭）'); };
+  }
+
+  draw(dash);
+}
+
+/* ---------------- 图表 ---------------- */
+function draw(dash) {
+  if (typeof Chart === 'undefined') {
+    document.querySelectorAll('.chart-box').forEach(b => {
+      b.innerHTML = '<div class="note" style="padding-top:2rem;text-align:center;">Chart.js 未加载（离线），数据仍可在下方时间线查看</div>';
+    });
+    return;
+  }
+  Object.values(charts).forEach(c => c && c.destroy());
+
+  const labels = dash.score.points.map(p => mmdd(p.at));
+  const gridColor = '#eef2f7';
+  const baseOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { boxWidth: 10, font: { size: 10 } } } },
+    scales: { x: { grid: { color: gridColor }, ticks: { font: { size: 10 } } },
+              y: { grid: { color: gridColor }, ticks: { font: { size: 10 } } } }
+  };
+
+  charts.score = new Chart($('cScore'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: '得分率 (%)',
+        data: dash.score.points.map(p => p.percent),
+        borderColor: '#0ea5e9', backgroundColor: 'rgba(14,165,233,.12)',
+        fill: true, tension: .32, pointRadius: 4, pointBackgroundColor: '#0ea5e9'
+      }]
+    },
+    options: { ...baseOpts, scales: { ...baseOpts.scales, y: { ...baseOpts.scales.y, min: 0, max: 100 } } }
+  });
+
+  // 堆叠柱：取出现最多的 6 类
+  const codes = dash.error_categories.totals.slice(0, 6);
+  charts.err = new Chart($('cErr'), {
+    type: 'bar',
+    data: {
+      labels: dash.error_categories.points.map(p => mmdd(p.at)),
+      datasets: codes.map((c, i) => ({
+        label: c.label,
+        data: dash.error_categories.points.map(p => p.counts[c.code] || 0),
+        backgroundColor: PALETTE[i % PALETTE.length],
+        borderRadius: 3
+      }))
+    },
+    options: {
+      ...baseOpts,
+      scales: {
+        x: { ...baseOpts.scales.x, stacked: true },
+        y: { ...baseOpts.scales.y, stacked: true, beginAtZero: true, ticks: { precision: 0, font: { size: 10 } } }
+      }
+    }
+  });
+
+  charts.ttr = new Chart($('cTtr'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{ label: 'TTR', data: dash.lexical_diversity.points.map(p => p.ttr),
+        borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,.12)', fill: true, tension: .3, pointRadius: 3 }]
+    },
+    options: baseOpts
+  });
+
+  charts.struct = new Chart($('cStruct'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{ label: '结构分 (0–10)', data: dash.structure.points.map(p => p.dimension_normalized),
+        borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,.12)', fill: true, tension: .3, pointRadius: 3 }]
+    },
+    options: { ...baseOpts, scales: { ...baseOpts.scales, y: { ...baseOpts.scales.y, min: 0, max: 10 } } }
+  });
+}
+
+/* ---------------- 隐私删除 ---------------- */
+async function removeStudent() {
+  const sid = $('studentSelect').value || $('studentInput').value.trim();
+  if (!sid) { toast('请先选择学号'); return; }
+  if (!confirm('确定删除学号 ' + sid + ' 的全部批改记录与上传原图？此操作不可恢复。')) return;
+  try {
+    const out = await api('/api/analytics/students/' + encodeURIComponent(sid), { method: 'DELETE' });
+    toast('已删除 ' + out.removed_submissions + ' 条记录、' + out.removed_assets + ' 个文件');
+    setTimeout(() => location.reload(), 800);
+  } catch (e) {
+    toast('删除失败：' + e.message);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
