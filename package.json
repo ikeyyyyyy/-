@@ -14,7 +14,8 @@
     "test:analytics": "node scripts/run-tests.mjs tests/analytics",
     "seed": "node sample_data/seed-analytics.js",
     "check": "npm run lint && npm test",
-    "samples": "node scripts/make-sample-images.mjs"
+    "samples": "node scripts/make-sample-images.mjs",
+    "build:standalone": "node scripts/build-standalone.mjs"
   },
   "engines": {
     "node": ">=20.0.0"
