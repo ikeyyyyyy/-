@@ -1,0 +1,54 @@
+name: CI
+
+# 只做两件事：lint + test。不依赖任何第三方包（项目本身零依赖），所以不需要 npm ci，
+# 也就没有 lockfile 与缓存策略的问题。仓库里不含任何密钥，工作流也不读 secrets。
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: lint & test (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Show environment
+        run: |
+          node --version
+          npm --version
+
+      - name: Lint (syntax + inline scripts + secret scan)
+        run: npm run lint
+
+      - name: Test suite
+        run: npm test
+
+      - name: Smoke test server
+        run: |
+          # 起服务 -> 打健康检查 -> 跑一遍 seed -> 确认仪表盘有数据
+          node backend/server.js &
+          SERVER_PID=$!
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8787/api/health > /dev/null; then break; fi
+            sleep 0.5
+          done
+          curl -sf http://127.0.0.1:8787/api/health | tee /tmp/health.json
+          npm run seed
+          curl -sf "http://127.0.0.1:8787/api/analytics/students/anon_demo_01/dashboard" \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);if(j.submission_count!==5||j.empty){console.error('dashboard unexpected',j.submission_count);process.exit(1)}console.log('dashboard ok, trend =',j.score.trend)})"
+          kill $SERVER_PID

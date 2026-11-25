@@ -1,0 +1,13 @@
+# 统一行尾：仓库内一律 LF，检出时由 Git 按平台转换。
+# Windows 上不加这个文件容易把 CRLF 提交进去，导致 CI 或 Linux 协作者看到整文件 diff。
+* text=auto eol=lf
+
+# 图片与 PDF 是二进制，别做行尾转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.pdf binary
+
+# 文档按文本处理
+*.md text

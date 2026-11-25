@@ -1,0 +1,31 @@
+# 依赖（本项目零依赖，保留以防后续引入工具链）
+node_modules/
+.pnpm-store/
+
+# 运行期数据：数据库文件与用户上传的原图，绝不入库
+backend/data/db.json
+backend/data/db.json.tmp
+backend/data/uploads/*
+!backend/data/uploads/.gitkeep
+backend/data/*.log
+
+# 环境变量：只提交 .env.example
+.env
+.env.*
+!.env.example
+
+# 工作区辅助数据（本地记忆/草稿，不属于代码）
+.workbuddy/
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# 测试与截图临时产物
+coverage/
+*.tmp
+_p*.html
+_smoke.html

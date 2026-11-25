@@ -1,0 +1,29 @@
+{
+  "name": "english-essay-grader",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "description": "英语作文智能批改：纯前端评分页 + 多模态输入预处理 + 学习分析档案（零第三方依赖 Node 服务）",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node --watch backend/server.js",
+    "lint": "node scripts/lint.js",
+    "test": "node --test \"tests/**/*.test.js\"",
+    "test:multimodal": "node --test \"tests/multimodal/*.test.js\"",
+    "test:analytics": "node --test \"tests/analytics/*.test.js\"",
+    "seed": "node sample_data/seed-analytics.js",
+    "check": "npm run lint && npm test",
+    "samples": "node scripts/make-sample-images.mjs"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "essay-grader",
+    "ocr",
+    "writing-analytics",
+    "education"
+  ],
+  "license": "MIT"
+}
