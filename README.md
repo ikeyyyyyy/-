@@ -68,6 +68,9 @@
 
 不需要 Node、不需要 Python、不需要 `npm install`，也不需要任何本地服务器。
 
+> 注意：这条只适用于**文本批改页**。顶部的「图片/PDF 批改」「学习档案」两个入口需要后端服务，
+> 请按下面的**方式 D** 用 `start.cmd` / `npm start` 启动；否则这两个页面会显示启动指引而不是内容。
+
 ### 方式 B：本地起一个静态服务（可选）
 
 ```bash
@@ -84,19 +87,39 @@ python -m http.server 8000
 
 > GitHub Pages 只能托管静态文件，**多模态上传与学习档案需要后端**，因此 Pages 上只有文本批改页可用（新增页面会提示"未连接本地服务"）。
 
-### 方式 D：启动完整服务（要用图片/PDF 批改 与 学习档案时）
+### 方式 D：启动完整服务（图片/PDF 批改、学习档案**必须**走这条）
+
+> **先说清楚一件事：为什么双击那两个 html 用不了？**
+> 图片批改要先跑 OCR，学习档案要先读历史记录——这两件事都在后端，纯浏览器做不了。
+> 所以这两个页面必须配一个本地服务；但**不需要你懂命令行**：
+>
+> - **Windows：双击根目录的 `start.cmd`** —— 自动启动服务并打开浏览器；
+> - **macOS / Linux：在根目录执行 `./start.sh`**（等价于 `npm start`）。
+>
+> 页面本身也做了兜底：连不上时会直接显示启动步骤、「立即重试」和自定义服务地址；
+> **服务启动后不用刷新，3 秒内会自动连上**（页面每 3 秒探一次 `/api/health`）。
 
 ```bash
-node backend/server.js        # 或 npm start；Node ≥ 20，零第三方依赖，无需 npm install
+./start.sh          # macOS / Linux：起服务 + 自动开浏览器
+npm start           # 任何平台，效果相同（Node ≥ 20，零第三方依赖）
 ```
 
-打开 <http://localhost:8787/> 即可。三个页面：
+服务起来后：
 
 | 页面 | 地址 |
 | --- | --- |
-| 文本批改 | `/index.html` |
-| 图片/PDF 批改 | `/frontend/src/pages/MultimodalUpload/index.html` |
-| 学习档案 | `/frontend/src/pages/LearningProfile/index.html` |
+| 文本批改 | <http://127.0.0.1:8787/index.html> |
+| 图片/PDF 批改 | <http://127.0.0.1:8787/frontend/src/pages/MultimodalUpload/index.html> |
+| 学习档案 | <http://127.0.0.1:8787/frontend/src/pages/LearningProfile/index.html?student=anon_demo_01> |
+
+> 这两个页面也支持直接双击打开：它们会自动去 `127.0.0.1:8787` 找后端，
+> 找到就正常用，找不到就显示启动指引 —— 不会白屏，也不会静默失败。
+
+**端口被占了？** 换端口启动，然后在页面断线卡片里点「高级：自定义服务地址」填 `http://127.0.0.1:9000`：
+
+```bash
+PORT=9000 npm start
+```
 
 生成演示数据（同一匿名学生的 5 篇提交）：
 
@@ -449,6 +472,8 @@ english-essay-grader/
 ├── index.html                       # 文本批改页（单文件，双击即用；也是唯一的评分实现）
 ├── README.md                        # 本文档
 ├── LICENSE                          # MIT 协议
+├── start.cmd                        # Windows 一键启动：起服务 + 开浏览器（双击即可）
+├── start.sh                         # macOS / Linux 一键启动
 ├── package.json                     # 脚本：start / test / lint / seed（无第三方依赖）
 ├── .env.example                     # 环境变量示例（不含任何密钥）
 ├── backend/
