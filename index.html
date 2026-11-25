@@ -6,10 +6,11 @@
 <meta name="description" content="English Essay Grader —— 纯前端英语作文智能批阅工具，支持高考、CET4/6、专四、雅思、托福六套评分体系，多维雷达图 + 结构化评语。" />
 <title>English Essay Grader · 英语作文智能批阅</title>
 
-<!-- ===== CDN：Tailwind CSS（样式） ===== -->
+<!-- ===== Tailwind CSS（仅用于个别工具类；取不到也不影响布局） ===== -->
 <script src="https://cdn.tailwindcss.com"></script>
-<!-- ===== CDN：Chart.js（雷达图） ===== -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- ===== Chart.js 4.4.1（雷达图）：优先生效的本地副本，断网/校园网拦截 CDN 也能出图 ===== -->
+<script src="assets/vendor/chart.umd.min.js"
+        onerror="var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';document.head.appendChild(s);"></script>
 
 <style>
   /* ===================================================================
@@ -43,6 +44,8 @@
   .brand h1{margin:0;font-size:1.35rem;font-weight:800;letter-spacing:-.01em;}
   .brand p{margin:.1rem 0 0;font-size:.8rem;color:var(--muted);}
   .tag{display:inline-block;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;border-radius:999px;padding:.15rem .6rem;font-size:.72rem;font-weight:600;white-space:nowrap;}
+  /* 顶栏标签行：自己实现一行 flex，不依赖 Tailwind（CDN 被校园网拦截时排版也不会乱） */
+  .tag-row{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;}
 
   /* ---------- 免责声明 ---------- */
   .disclaimer{
@@ -230,7 +233,7 @@
         <p>英语作文智能批阅 · 六套评分体系 · 多维雷达图 · 结构化评语</p>
       </div>
     </div>
-    <div class="flex items-center gap-2 flex-wrap">
+    <div class="tag-row flex items-center gap-2 flex-wrap">
       <span class="tag">纯前端 · 双击即用</span>
       <span class="tag">六套评分体系</span>
       <span class="tag">MIT License</span>

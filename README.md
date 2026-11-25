@@ -146,10 +146,11 @@ cp .env.example .env      # 然后按需修改 OCR_ENGINE / PADDLEOCR_ENDPOINT /
 ### 环境要求
 
 - 任意现代浏览器（Chrome / Edge / Firefox / Safari）；
-- **需要联网**：Tailwind CSS 与 Chart.js 通过 CDN 引入（首次打开后浏览器会缓存）。
+- **不需要联网**：Chart.js 4.4.1 已内置在 `assets/vendor/chart.umd.min.js`，断网或校园网拦截 CDN 也能正常出雷达图；
+- Tailwind CSS 仍按原方案走 CDN，但只用于顶栏一行的工具类，取不到也不影响布局（关键样式都在页面内联 CSS 里）。
 
-> 课堂演示建议提前 5 分钟打开一次页面，让 CDN 完成缓存，之后即使网络抖动也不影响展示。
-> 若 Chart.js 加载失败，页面会自动降级为"分数条"展示，不会白屏。
+> 课堂演示：直接双击 `start.cmd`（或 `index.html`）即可，不必提前联网预热缓存。
+> 只有本地 `assets/vendor/` 缺失时才会回落到 jsdelivr CDN；两者都失败时页面自动降级为「分数条」，不会白屏。
 
 ---
 
@@ -467,7 +468,7 @@ CI（`.github/workflows/ci.yml`）在 Node 20 / 22 上跑 `npm run lint` + `npm 
 3. **语法检查是模式匹配**，会有漏报和误报。它抓的是"中国学生高频错误模式"，不是完整语法分析器。
 4. **分数是参考值，不是考场分数**。同一篇作文在不同阅卷员手里可能差 1–2 分，本工具只能给一个"大致坐标"。
 5. **非英语文本、诗歌、剧本、图表作文**不在支持范围内（雅思 Task 1、托福综合写作均未覆盖）。
-6. **需要联网加载 CDN**。断网时页面骨架仍在，但样式与雷达图会降级。
+6. **雷达图已内置，不依赖联网**；仅 Tailwind CDN 仍需网络，但它只影响顶栏一行工具类，缺失时布局不变。
 7. **文本批改页不存储任何文本**：不填学号、不启动服务时，刷新即清空，作文不出浏览器。
    一旦填了匿名学号并连上本地服务，记录会写进 `backend/data/db.json`（本地文件，已在 `.gitignore` 中）。
 8. **默认 OCR 引擎 `mock` 不识别真实图片**：它只回放 `sample_data/ocr_fixtures` 里的 demo 夹具。
@@ -525,7 +526,8 @@ english-essay-grader/
 ├── scripts/
 │   ├── lint.js                      # 零依赖 lint（语法 + 内联脚本 + 密钥扫描）
 │   └── make-sample-images.mjs       # 重新生成 demo 图片并回填 sha256
-├── assets/                          # 截图
+├── assets/                          # 截图 + 内置的 Chart.js
+│   └── vendor/chart.umd.min.js      # Chart.js 4.4.1（本地副本，断网也能画雷达图）
 └── docs/
     ├── architecture.md              # 模块关系图 / 数据流图 / 数据模型 / 迁移
     ├── api/multimodal.md            # 多模态 API 文档
