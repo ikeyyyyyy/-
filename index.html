@@ -1,0 +1,1885 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="English Essay Grader —— 纯前端英语作文智能批阅工具，支持高考、CET4/6、专四、雅思、托福六套评分体系，多维雷达图 + 结构化评语。" />
+<title>English Essay Grader · 英语作文智能批阅</title>
+
+<!-- ===== CDN：Tailwind CSS（样式） ===== -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- ===== CDN：Chart.js（雷达图） ===== -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+  /* ===================================================================
+     说明：核心布局/组件样式写在这里（而不是全部依赖 Tailwind），
+     这样即使校园网访问 CDN 较慢，页面骨架与按钮依然可用。
+     =================================================================== */
+  :root{
+    --brand:#0ea5e9; --brand-dark:#0284c7; --brand-soft:#e0f2fe;
+    --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --bg:#f5f9fd;
+    --ok:#059669; --warn:#d97706; --danger:#e11d48;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1320px;margin:0 auto;padding:0 1rem;}
+
+  /* ---------- 顶部 ---------- */
+  .site-header{background:linear-gradient(180deg,#e0f2fe 0%,rgba(245,249,253,0) 100%);border-bottom:1px solid #dbeafe;}
+  .header-inner{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between;padding-top:1.35rem;padding-bottom:1.35rem;}
+  .brand{display:flex;align-items:center;gap:.85rem;}
+  .brand-mark{
+    width:44px;height:44px;border-radius:12px;flex:0 0 auto;
+    background:linear-gradient(135deg,#38bdf8,#0284c7);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:1.35rem;
+    box-shadow:0 6px 16px -6px rgba(2,132,199,.7);
+  }
+  .brand h1{margin:0;font-size:1.35rem;font-weight:800;letter-spacing:-.01em;}
+  .brand p{margin:.1rem 0 0;font-size:.8rem;color:var(--muted);}
+  .tag{display:inline-block;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;border-radius:999px;padding:.15rem .6rem;font-size:.72rem;font-weight:600;white-space:nowrap;}
+
+  /* ---------- 免责声明 ---------- */
+  .disclaimer{
+    margin-top:1.1rem;background:#fffbeb;border:1px solid #fde68a;color:#92400e;
+    border-radius:14px;padding:.85rem 1rem;display:flex;gap:.7rem;align-items:flex-start;
+    font-size:.86rem;line-height:1.65;
+  }
+  .disclaimer b{color:#78350f;}
+
+  /* ---------- 主栅格 ---------- */
+  .app-grid{display:grid;grid-template-columns:1fr;gap:1.25rem;align-items:start;margin-top:1.25rem;}
+  @media(min-width:1024px){
+    .app-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);gap:1.5rem;}
+  }
+  .card{
+    background:#fff;border:1px solid var(--line);border-radius:16px;
+    box-shadow:0 1px 2px rgba(15,23,42,.04),0 12px 28px -22px rgba(15,23,42,.35);
+  }
+  .panel{padding:1.15rem 1.15rem 1.25rem;}
+  @media(min-width:768px){.panel{padding:1.4rem 1.5rem 1.5rem;}}
+  .panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:.75rem;margin-bottom:.9rem;flex-wrap:wrap;}
+  .panel-head h2{margin:0;font-size:1rem;font-weight:800;color:#0f172a;}
+  .panel-head .hint{font-size:.75rem;color:var(--muted);}
+
+  /* ---------- 表单 ---------- */
+  .field-label{display:block;font-size:.82rem;font-weight:700;color:#334155;margin:.2rem 0 .4rem;}
+  .field-label .en{font-weight:500;color:#94a3b8;font-size:.72rem;margin-left:.25rem;}
+  .select{
+    width:100%;padding:.6rem .75rem;border:1px solid #cbd5e1;border-radius:10px;background:#fff;
+    font-size:.9rem;color:#0f172a;outline:none;transition:.15s;cursor:pointer;
+  }
+  .select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(14,165,233,.15);}
+  .exam-meta{
+    margin-top:.55rem;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:10px;
+    padding:.55rem .7rem;font-size:.76rem;color:#475569;line-height:1.6;
+  }
+  .exam-meta b{color:#0369a1;}
+  .textarea{
+    width:100%;min-height:290px;resize:vertical;padding:.8rem .9rem;border:1px solid #cbd5e1;border-radius:12px;
+    font-size:.94rem;line-height:1.75;color:#0f172a;background:#fff;outline:none;transition:.15s;
+    font-family:"Segoe UI",Georgia,"Times New Roman",serif;
+  }
+  .textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(14,165,233,.15);}
+  .input-foot{display:flex;justify-content:space-between;gap:.75rem;margin-top:.4rem;font-size:.74rem;color:var(--muted);}
+
+  /* ---------- 按钮 ---------- */
+  .btn-row{display:flex;gap:.6rem;margin-top:1rem;flex-wrap:wrap;}
+  .btn{
+    border:none;border-radius:10px;padding:.62rem 1.15rem;font-size:.9rem;font-weight:700;cursor:pointer;
+    transition:transform .12s ease, box-shadow .15s ease, background .15s ease;font-family:inherit;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:linear-gradient(135deg,#38bdf8,#0284c7);color:#fff;box-shadow:0 8px 18px -10px rgba(2,132,199,.9);}
+  .btn-primary:hover{box-shadow:0 12px 22px -10px rgba(2,132,199,.95);}
+  .btn-primary:disabled{opacity:.6;cursor:not-allowed;box-shadow:none;}
+  .btn-ghost{background:#fff;border:1px solid #cbd5e1;color:#475569;}
+  .btn-ghost:hover{background:#f8fafc;border-color:#94a3b8;}
+  .sample-row{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;margin-top:1rem;padding-top:.9rem;border-top:1px dashed var(--line);font-size:.76rem;color:var(--muted);}
+  .chip{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:.28rem .72rem;font-size:.76rem;color:#334155;cursor:pointer;transition:.15s;font-weight:600;}
+  .chip:hover{background:#e0f2fe;border-color:#7dd3fc;color:#0369a1;}
+
+  /* ---------- 结果区 ---------- */
+  #resultCard{position:relative;}
+  .empty-state{padding:3rem 1.5rem;text-align:center;color:var(--muted);min-height:420px;display:flex;flex-direction:column;justify-content:center;}
+  .empty-state .ico{font-size:2.4rem;opacity:.35;}
+  .empty-state p{margin:.6rem 0 0;font-size:.86rem;line-height:1.7;}
+
+  .loading{padding:3.2rem 1.5rem;text-align:center;}
+  .spinner{
+    width:40px;height:40px;border-radius:50%;margin:0 auto 1rem;
+    border:3px solid #e0f2fe;border-top-color:var(--brand);animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading-text{font-size:.85rem;color:#0369a1;font-weight:600;}
+  .loading-sub{font-size:.74rem;color:var(--muted);margin-top:.35rem;}
+
+  .fade-in{animation:fadeIn .45s ease both;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+
+  /* ---------- 分数面板 ---------- */
+  .score-band{display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;align-items:center;}
+  .big-score{font-size:2.9rem;font-weight:800;color:var(--brand-dark);line-height:1;letter-spacing:-.02em;}
+  .big-score .total-max{font-size:1rem;font-weight:600;color:#94a3b8;margin-left:.2rem;}
+  .band-badge{
+    display:inline-block;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;
+    border-radius:999px;padding:.28rem .8rem;font-size:.8rem;font-weight:800;
+  }
+  .band-desc{margin:.6rem 0 0;font-size:.78rem;line-height:1.7;color:#475569;background:#f8fafc;border-left:3px solid #7dd3fc;padding:.55rem .7rem;border-radius:0 8px 8px 0;}
+
+  .dim-list{margin-top:.45rem;display:grid;gap:.62rem;}
+  .dim-row{display:grid;grid-template-columns:1fr auto;gap:.15rem .6rem;align-items:center;}
+  .dim-name{font-size:.8rem;color:#334155;font-weight:600;}
+  .dim-name i{font-style:normal;color:#94a3b8;font-weight:500;font-size:.7rem;margin-left:.3rem;}
+  .dim-val{font-size:.8rem;font-weight:800;color:#0f172a;font-variant-numeric:tabular-nums;}
+  .bar{grid-column:1/-1;height:7px;border-radius:999px;background:#eef2f7;overflow:hidden;}
+  .bar > i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#7dd3fc,#0284c7);transition:width .7s cubic-bezier(.2,.8,.2,1);}
+  .dim-row.aux .dim-name{color:#94a3b8;}
+
+  .radar-box{position:relative;height:330px;margin-top:.4rem;}
+  @media(min-width:1024px){.radar-box{height:360px;}}
+  .section-title{display:flex;align-items:center;gap:.45rem;font-size:.92rem;font-weight:800;color:#0f172a;margin:1.35rem 0 .6rem;}
+  .section-title em{font-style:normal;font-size:.72rem;font-weight:600;color:#94a3b8;}
+
+  .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-top:.9rem;}
+  @media(min-width:640px){.stats-row{grid-template-columns:repeat(6,1fr);}}
+  .stat{background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:.5rem .3rem;text-align:center;}
+  .stat b{display:block;font-size:1rem;font-weight:800;color:#0369a1;font-variant-numeric:tabular-nums;}
+  .stat span{font-size:.66rem;color:var(--muted);}
+
+  /* ---------- 评语 ---------- */
+  .comment-block{border:1px solid var(--line);border-radius:12px;padding:.8rem .9rem;margin-bottom:.65rem;background:#fff;}
+  .comment-block h4{margin:0 0 .5rem;font-size:.85rem;font-weight:800;display:flex;align-items:center;gap:.4rem;}
+  .comment-block h4 .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
+  .comment-block ul{margin:0;padding-left:1.05rem;}
+  .comment-block li{font-size:.84rem;line-height:1.85;color:#334155;margin-bottom:.3rem;}
+  .c-good{border-left:3px solid #34d399;}
+  .c-bad{border-left:3px solid #fb7185;}
+  .c-tip{border-left:3px solid #fbbf24;}
+
+  /* ---------- 问题清单 ---------- */
+  details.findings{border:1px solid var(--line);border-radius:12px;background:#fcfdff;}
+  details.findings summary{cursor:pointer;padding:.7rem .9rem;font-size:.83rem;font-weight:700;color:#334155;list-style:none;}
+  details.findings summary::-webkit-details-marker{display:none;}
+  details.findings summary::before{content:"▸ ";color:#94a3b8;}
+  details.findings[open] summary::before{content:"▾ ";}
+  .finding-item{padding:.6rem .9rem;border-top:1px dashed var(--line);font-size:.8rem;line-height:1.75;color:#334155;}
+  .finding-item .ftag{display:inline-block;font-size:.66rem;font-weight:800;border-radius:6px;padding:.05rem .4rem;margin-right:.4rem;background:#e0f2fe;color:#0369a1;}
+  .finding-item .ftag[data-sev="3"]{background:#ffe4e6;color:#be123c;}
+  .finding-item .ftag[data-sev="2"]{background:#fef3c7;color:#b45309;}
+  .finding-item .ex{display:inline-block;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:0 .32rem;margin:.15rem .25rem 0 0;font-family:Consolas,Monaco,monospace;font-size:.74rem;color:#0f172a;}
+
+  .toolbar{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.9rem;}
+  .mini-btn{background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:.38rem .7rem;font-size:.76rem;font-weight:700;color:#475569;cursor:pointer;transition:.15s;}
+  .mini-btn:hover{background:#f1f5f9;border-color:#94a3b8;}
+
+  /* ---------- Toast ---------- */
+  #toast{
+    position:fixed;left:50%;bottom:2rem;transform:translate(-50%,20px);opacity:0;pointer-events:none;
+    background:#0f172a;color:#fff;padding:.6rem 1rem;border-radius:10px;font-size:.82rem;z-index:99;
+    transition:.25s ease;box-shadow:0 10px 30px -10px rgba(0,0,0,.5);
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0);}
+
+  /* ---------- 新增：模块入口与学习档案联动（增量样式，不影响原有布局） ---------- */
+  .tag-link{text-decoration:none;background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;}
+  .tag-link:hover{background:#dbeafe;}
+
+  .profile-box{margin-top:.9rem;padding:.8rem .9rem;border:1px dashed #bae6fd;background:#f8fcff;border-radius:12px;}
+  .profile-head{display:flex;align-items:center;gap:.45rem;font-size:.82rem;color:#0f172a;flex-wrap:wrap;}
+  .profile-head .en{font-size:.68rem;color:#94a3b8;font-weight:500;}
+  .api-state{margin-left:auto;font-size:.68rem;color:#94a3b8;}
+  .api-state.on{color:#15803d;}
+  .api-state.off{color:#b45309;}
+  .profile-desc{margin:.35rem 0 .55rem;font-size:.72rem;line-height:1.65;color:#64748b;}
+  .profile-desc code{background:#eef2f7;padding:.02rem .25rem;border-radius:4px;font-size:.7rem;}
+  .profile-row{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;}
+  .mini-input{flex:1 1 130px;min-width:0;border:1px solid #cbd5e1;border-radius:8px;padding:.4rem .55rem;font-size:.78rem;color:#0f172a;background:#fff;}
+  .mini-input:focus{outline:2px solid #bae6fd;border-color:#38bdf8;}
+  .mini-link{font-size:.72rem;color:#0284c7;text-decoration:none;}
+  .mini-link:hover{text-decoration:underline;}
+  .mini-check{display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:#475569;cursor:pointer;}
+
+  .profile-hint{display:flex;gap:.6rem;align-items:flex-start;background:#f0f9ff;border:1px solid #bae6fd;border-left:4px solid #0ea5e9;border-radius:10px;padding:.65rem .8rem;margin-bottom:.9rem;}
+  .profile-hint .hint-ico{font-size:.95rem;line-height:1.5;}
+  .profile-hint .hint-body{flex:1;min-width:0;font-size:.8rem;color:#0c4a6e;line-height:1.7;}
+  .profile-hint .hint-title{font-weight:700;font-size:.72rem;letter-spacing:.03em;color:#0369a1;margin-bottom:.1rem;}
+  .profile-hint .hint-title .en{font-weight:500;color:#7dd3fc;font-size:.66rem;margin-left:.2rem;}
+  .profile-hint .hint-note{font-size:.68rem;color:#64748b;margin-top:.2rem;}
+  .hint-close{margin-left:auto;border:none;background:transparent;color:#7dd3fc;font-size:1.1rem;line-height:1;cursor:pointer;padding:.1rem .25rem;border-radius:6px;}
+  .hint-close:hover{background:#e0f2fe;color:#0284c7;}
+
+  footer.site-footer{margin-top:2.5rem;padding:1.4rem 0 2.2rem;border-top:1px solid var(--line);text-align:center;font-size:.76rem;color:var(--muted);line-height:1.9;}
+  footer.site-footer code{background:#f1f5f9;padding:.05rem .3rem;border-radius:4px;font-size:.72rem;}
+</style>
+</head>
+<body>
+
+<!-- ================= 顶部标题区 ================= -->
+<header class="site-header">
+  <div class="wrap header-inner">
+    <div class="brand">
+      <div class="brand-mark">✎</div>
+      <div>
+        <h1>English Essay Grader</h1>
+        <p>英语作文智能批阅 · 六套评分体系 · 多维雷达图 · 结构化评语</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+      <span class="tag">纯前端 · 双击即用</span>
+      <span class="tag">六套评分体系</span>
+      <span class="tag">MIT License</span>
+      <!-- 新增模块入口（增量，不影响本页原有功能；后端未启动时点开会有提示，本页仍可离线使用） -->
+      <a class="tag tag-link" href="frontend/src/pages/MultimodalUpload/index.html" target="_blank" rel="noopener">📷 图片/PDF 批改</a>
+      <a class="tag tag-link" href="frontend/src/pages/LearningProfile/index.html" target="_blank" rel="noopener">📈 学习档案</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ================= 免责声明（显眼位置，强制展示） ================= -->
+  <div class="disclaimer">
+    <span style="font-size:1.05rem;line-height:1.4;">⚠️</span>
+    <div>
+      <b>成绩为 AI 参考分，仅供学习，不等于考场官方阅卷分数。</b><br>
+      本工具由浏览器内的规则引擎打分（不联网、不上传你的作文），仅能识别拼写、主谓一致、标点、衔接词密度等可计算特征，
+      无法像真人阅卷员一样判断立意深度与思想质量。请把它当作「写作体检报告」，而不是「判决书」。
+    </div>
+  </div>
+
+  <!-- ================= 主区域：左输入 / 右结果 ================= -->
+  <main class="app-grid">
+
+    <!-- ---------- 左：输入区 ---------- -->
+    <section class="card panel">
+      <div class="panel-head">
+        <h2>① 输入作文 <span style="font-weight:500;color:#94a3b8;font-size:.75rem;">Input</span></h2>
+        <span class="hint">粘贴或直接输入英文作文</span>
+      </div>
+
+      <!-- 评分体系下拉菜单 -->
+      <label class="field-label" for="examSelect">评分体系 <span class="en">Scoring System</span></label>
+      <select id="examSelect" class="select"></select>
+      <div class="exam-meta" id="examMeta"></div>
+
+      <!-- 作文输入框 -->
+      <label class="field-label" for="essayInput" style="margin-top:.95rem;">作文正文 <span class="en">Essay</span></label>
+      <textarea id="essayInput" class="textarea" spellcheck="false"
+        placeholder="Paste or type your English essay here…&#10;&#10;例如：&#10;Nowadays, whether university students should choose their own majors has aroused wide discussion…"></textarea>
+      <div class="input-foot">
+        <span id="liveCount">0 词 · 0 字符</span>
+        <span id="targetHint">—</span>
+      </div>
+
+      <!-- 操作按钮 -->
+      <div class="btn-row">
+        <button id="btnGrade" class="btn btn-primary">开始批阅 Essay</button>
+        <button id="btnClear" class="btn btn-ghost">清空</button>
+      </div>
+
+      <!-- 课堂演示样例（一键载入） -->
+      <div class="sample-row">
+        <span>课堂示例：</span>
+        <button class="chip" data-sample="high">高分范文</button>
+        <button class="chip" data-sample="mid">中等作文</button>
+        <button class="chip" data-sample="low">问题作文</button>
+        <span style="margin-left:auto;font-size:.7rem;color:#cbd5e1;">点击自动填入并切换体系</span>
+      </div>
+
+      <!-- ============ 可选：学习档案联动（新增模块 B 的入口，不填也能正常批阅） ============ -->
+      <div class="profile-box" id="profileBox">
+        <div class="profile-head">
+          <b>学习档案</b>
+          <span class="en">Learning Profile · 可选</span>
+          <span class="api-state" id="apiState">检测服务中…</span>
+        </div>
+        <p class="profile-desc">
+          填一个<b>匿名</b>学号（如 <code>anon_demo_01</code>），本页会把历次批改存到本地服务，
+          用来生成跨篇趋势与“你上次也犯了类似错误”的提示。不填则完全离线，行为与以前一模一样。
+        </p>
+        <div class="profile-row">
+          <input id="studentId" class="mini-input" placeholder="匿名学号（可选）" autocomplete="off" spellcheck="false">
+          <button id="btnSync" class="mini-btn" type="button">存入档案</button>
+          <a id="linkProfile" class="mini-link" href="frontend/src/pages/LearningProfile/index.html" target="_blank" rel="noopener">查看档案 →</a>
+        </div>
+        <div class="profile-row" style="margin-top:.45rem;">
+          <label class="mini-check"><input type="checkbox" id="autoSync" checked> 批阅后自动存入</label>
+          <button id="btnHintReset" class="mini-link" type="button" style="background:none;border:none;padding:0;cursor:pointer;">重新开启跨篇提示</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- 右：结果区 ---------- -->
+    <section class="card panel" id="resultCard">
+
+      <!-- 空状态 -->
+      <div id="resultEmpty" class="empty-state">
+        <div class="ico">📊</div>
+        <p><b>批阅结果将显示在这里</b><br>选择评分体系 → 输入作文 → 点击「开始批阅」</p>
+        <p style="font-size:.76rem;color:#94a3b8;">你将得到：五维雷达图 / 总分与档位 / 三段式评语 / 逐条问题清单</p>
+      </div>
+
+      <!-- 加载状态 -->
+      <div id="loadingBox" class="loading" hidden>
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingText">正在分析作文…</div>
+        <div class="loading-sub">本地规则引擎运行中，不会上传任何文本</div>
+      </div>
+
+      <!-- 结果内容 -->
+      <div id="resultContent" hidden>
+
+        <!-- 总分 + 档位 -->
+        <div>
+          <div class="score-band">
+            <div>
+              <div style="font-size:.72rem;font-weight:700;color:#94a3b8;letter-spacing:.06em;">TOTAL SCORE · 总分</div>
+              <div class="big-score"><span id="totalScore">—</span><span class="total-max" id="totalMax"></span></div>
+            </div>
+            <div style="text-align:right;">
+              <div class="band-badge" id="bandLabel">—</div>
+              <div style="font-size:.7rem;color:#94a3b8;margin-top:.35rem;">AI 参考档位 · 非官方成绩</div>
+            </div>
+          </div>
+          <p class="band-desc" id="bandDesc"></p>
+
+          <!-- 五维分数条 -->
+          <div style="display:flex;justify-content:space-between;font-size:.68rem;color:#94a3b8;margin:.95rem 0 .1rem;">
+            <span>维度得分（卷面分 / 满分）</span><span>右侧灰字 = 归一化 0–10</span>
+          </div>
+          <div class="dim-list" id="dimList"></div>
+        </div>
+
+        <!-- 雷达图 -->
+        <div class="section-title">五维能力雷达图 <em>Radar Chart</em></div>
+        <div style="font-size:.76rem;color:#64748b;margin-bottom:.15rem;">
+          评分体系：<b id="radarTitle" style="color:#0369a1;">—</b>
+          <span style="color:#94a3b8;">（各维度已归一化为 0–10 分）</span>
+        </div>
+        <div class="radar-box"><canvas id="radarCanvas"></canvas></div>
+        <div id="radarFallback" hidden style="font-size:.78rem;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:.6rem .75rem;margin-top:.4rem;">
+          雷达图库（Chart.js）未能加载，已切换为分数条展示。请检查网络后刷新页面。
+        </div>
+
+        <!-- 关键指标 -->
+        <div class="stats-row" id="statsRow"></div>
+
+        <!-- 三段式评语 -->
+        <div class="section-title">三段式评语 <em>Feedback</em></div>
+
+        <!-- 跨篇提示（新增模块 B 提供的可选内容；由 profile 接口给出，可关闭，关闭后不再打扰） -->
+        <div class="profile-hint" id="profileHint" hidden>
+          <span class="hint-ico">📌</span>
+          <div class="hint-body">
+            <div class="hint-title">历史提醒 <span class="en">Cross-essay tip</span></div>
+            <div id="profileHintText"></div>
+            <div class="hint-note" id="profileHintNote"></div>
+          </div>
+          <button class="hint-close" id="btnHintClose" type="button" title="不再显示跨篇提示" aria-label="关闭提示">×</button>
+        </div>
+
+        <div id="commentBox"></div>
+
+        <!-- 问题清单 -->
+        <details class="findings" id="findingsBox" open>
+          <summary id="findingsSummary">逐条问题清单</summary>
+          <div id="findingsList"></div>
+        </details>
+
+        <!-- 工具条 -->
+        <div class="toolbar">
+          <button class="mini-btn" id="btnCopy">复制评语</button>
+          <button class="mini-btn" id="btnExport">导出报告 (.txt)</button>
+          <button class="mini-btn" id="btnRegrade">重新批阅</button>
+        </div>
+
+        <p style="font-size:.7rem;color:#94a3b8;line-height:1.7;margin:.85rem 0 0;">
+          * 本页所有分数由本地启发式规则计算，属于 <b>AI 参考分</b>，仅供学习与课堂讨论，不能替代官方人工阅卷。
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= 页脚 ================= -->
+  <footer class="site-footer">
+    <div><b>English Essay Grader</b> · 纯前端单页应用 · HTML + CSS + JavaScript + Tailwind CSS + Chart.js</div>
+    <div>开源协议：<code>MIT License</code> · 可自由用于课堂演示、课程作业与二次开发</div>
+    <div style="color:#94a3b8;">本项目不收集、不上传任何作文内容；所有计算均在浏览器本地完成。</div>
+  </footer>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* =====================================================================================
+ *  English Essay Grader —— 核心逻辑
+ *  ------------------------------------------------------------------------------------
+ *  代码分为 8 个模块，方便课堂上逐段讲解：
+ *    1. 考试体系配置 EXAM_SYSTEMS   —— 六套评分体系的维度、满分、档位表
+ *    2. 词库 LEXICON                —— 衔接词、复杂句标志、常见拼写错误等
+ *    3. 文本工具                    —— 分词、分句、分段、哈希
+ *    4. 诊断规则 diagnose()         —— 找出拼写/语法/标点/结构问题
+ *    5. 打分引擎 computeScores()    —— 指标 → 五维得分 → 总分 → 档位
+ *    6. 评语生成 buildComment()     —— 优点 / 问题 / 建议（引用原文，拒绝套话）
+ *    7. 界面渲染 renderResult()     —— 分数面板、雷达图、评语、清单
+ *    8. 事件绑定                    —— 按钮、下拉框、示例载入
+ * ===================================================================================== */
+
+
+/* =====================================================================================
+ * 1. 考试体系配置
+ * -------------------------------------------------------------------------------------
+ * 设计思路：五个维度是"统一框架"，不同考试只是改「每个维度的满分」与「档位描述」。
+ *  - dims[key].max ：该维度在该考试中的满分
+ *  - totalMax     ：卷面总分（各维度满分之和；雅思为 9 分制平均分）
+ *  - bands        ：档位表，按 min 从高到低排列，取第一个满足 total >= min 的档
+ *  - wordTarget   ：字数要求（低于 min 会显著扣内容分）
+ *  - strictness   ：严格系数（同样的作文在更高级别考试里得分更低，模拟阅卷容忍度差异）
+ * ===================================================================================== */
+
+const DIM_META = {
+  content:   { zh: '内容扣题与论点', en: 'Task Response',        short: ['内容扣题', 'Task Response'],  color: '#0ea5e9' },
+  structure: { zh: '篇章结构与连贯', en: 'Coherence & Cohesion', short: ['篇章结构', 'Coherence'],      color: '#22c55e' },
+  lexis:     { zh: '词汇丰富与准确', en: 'Lexical Resource',     short: ['词汇资源', 'Lexical'],        color: '#f59e0b' },
+  grammar:   { zh: '语法与句式多样', en: 'Grammatical Range',    short: ['语法句式', 'Grammar'],        color: '#8b5cf6' },
+  mechanics: { zh: '格式标点规范',   en: 'Mechanics',            short: ['规范细节', 'Mechanics'],      color: '#f43f5e' }
+};
+const DIM_ORDER = ['content', 'structure', 'lexis', 'grammar', 'mechanics'];
+
+const EXAM_SYSTEMS = {
+
+  /* ---------------- 高考英语作文（全国卷） ---------------- */
+  gaokao: {
+    key: 'gaokao',
+    name: '高考英语作文（全国卷）',
+    shortName: '高考全国卷',
+    totalMax: 25,
+    totalMode: 'sum',            // sum = 各维度相加；average4 = 前四项平均（雅思）
+    scoreUnit: '分',
+    wordTarget: { min: 80, ideal: 100, max: 150, note: '要求 100 词左右' },
+    strictness: 1.00,
+    dims: { content: 8, structure: 5, lexis: 5, grammar: 5, mechanics: 2 },
+    bands: [
+      { min: 21, label: '第五档（21–25 分）· 优秀', desc: '完全完成任务：覆盖全部内容要点，语法结构与词汇较丰富，个别错误属于"尝试复杂表达"所致；衔接手段有效，全文结构紧凑。' },
+      { min: 16, label: '第四档（16–20 分）· 良好', desc: '完成任务：漏掉 1–2 个次要点但覆盖主要内容；语法与词汇基本满足任务要求，错误多为尝试复杂结构所致；有基本衔接，结构连贯。' },
+      { min: 11, label: '第三档（11–15 分）· 一般', desc: '基本完成任务：遗漏部分内容要点；语法结构和词汇能满足基本要求，错误不影响整体理解；衔接手段简单，结构基本完整。' },
+      { min: 6,  label: '第二档（6–10 分）· 较差',  desc: '未恰当完成任务：遗漏主要要点或描述不清；语法结构单调、词汇有限，错误较多且影响理解；缺少衔接，结构不完整。' },
+      { min: 1,  label: '第一档（1–5 分）· 差',     desc: '未完成任务：内容太少或完全偏离主题，无法传达有效信息；语言错误密集，难以理解。' },
+      { min: 0,  label: '0 分 · 白卷/完全无关',     desc: '空白卷、抄写试题或内容与题目完全无关。' }
+    ],
+    adviceFocus: '高考应用文/读后续写的备考重点是「要点齐全 + 三段式结构 + 5 个高频衔接词」，不要追求生僻词，先把时态与主谓一致写对。'
+  },
+
+  /* ---------------- 大学英语四级 CET4 ---------------- */
+  cet4: {
+    key: 'cet4',
+    name: '大学英语四级 CET4 写作',
+    shortName: 'CET4',
+    totalMax: 15,
+    totalMode: 'sum',
+    scoreUnit: '分',
+    wordTarget: { min: 120, ideal: 150, max: 200, note: '要求 120–180 词' },
+    strictness: 1.00,
+    dims: { content: 4, structure: 3, lexis: 3, grammar: 3, mechanics: 2 },
+    bands: [
+      { min: 13, label: '优秀档（13–15 分）', desc: '切题，表达思想清楚，文字通顺、连贯，基本上无语言错误，仅有个别小错。' },
+      { min: 10, label: '良好档（10–12 分）', desc: '切题，表达思想清楚，文字连贯，但有少量语言错误。' },
+      { min: 7,  label: '及格档（7–9 分）',   desc: '基本切题，有些地方表达思想不够清楚，文字勉强连贯，语言错误相当多，其中有一些是严重错误。' },
+      { min: 4,  label: '较差档（4–6 分）',   desc: '基本切题，表达思想不清楚，连贯性差，有较多的严重语言错误。' },
+      { min: 1,  label: '差档（1–3 分）',     desc: '条理不清，思路紊乱，语言支离破碎或大部分句子均有错误，且多数为严重错误。' },
+      { min: 0,  label: '0 分 · 白卷/无关',   desc: '空白、只有几个孤立的词或内容与题目无关。' }
+    ],
+    adviceFocus: 'CET4 写作按「15 分制」评分，及格线附近最常见的失分不是词汇，而是主谓一致、时态混用与可数名词单复数。先把这三类消灭，再从 10 分档冲到 13 分档。'
+  },
+
+  /* ---------------- 大学英语六级 CET6 ---------------- */
+  cet6: {
+    key: 'cet6',
+    name: '大学英语六级 CET6 写作',
+    shortName: 'CET6',
+    totalMax: 15,
+    totalMode: 'sum',
+    scoreUnit: '分',
+    wordTarget: { min: 150, ideal: 180, max: 230, note: '要求 150–200 词' },
+    strictness: 0.88,   // 六级评分文字与四级相同，但阅卷对语言质量容忍度更低（同一篇作文通常比四级低 2 分左右）
+    dims: { content: 4, structure: 3, lexis: 3, grammar: 3, mechanics: 2 },
+    bands: [
+      { min: 13, label: '优秀档（13–15 分）', desc: '切题，思想清楚，文字通顺连贯；句式与词汇有一定复杂度，仅个别小错。' },
+      { min: 10, label: '良好档（10–12 分）', desc: '切题，表达清楚，文字连贯；有少量语言错误，但基本不影响理解。' },
+      { min: 7,  label: '及格档（7–9 分）',   desc: '基本切题，部分地方表达不够清楚，连贯性一般，语言错误较多。' },
+      { min: 4,  label: '较差档（4–6 分）',   desc: '基本切题但思想表达不清，连贯性差，严重语言错误较多。' },
+      { min: 1,  label: '差档（1–3 分）',     desc: '条理不清，语言支离破碎，多数句子有错误。' },
+      { min: 0,  label: '0 分 · 白卷/无关',   desc: '空白或内容与题目无关。' }
+    ],
+    adviceFocus: '六级的隐藏门槛是「句式复杂度」：全篇简单句即使零错误也难上 13 分。建议每段至少写 1 个含从句或非谓语的长句，并用 2–3 个高级衔接词（nevertheless / in that case / by contrast）。'
+  },
+
+  /* ---------------- 英语专业四级 TEM4 ---------------- */
+  tem4: {
+    key: 'tem4',
+    name: '英语专业四级 TEM4 写作',
+    shortName: 'TEM4',
+    totalMax: 20,
+    totalMode: 'sum',
+    scoreUnit: '分',
+    wordTarget: { min: 190, ideal: 220, max: 280, note: '要求约 200 词' },
+    strictness: 0.95,
+    dims: { content: 6, structure: 4, lexis: 4, grammar: 4, mechanics: 2 },
+    bands: [
+      { min: 18, label: '优秀（18–20 分）', desc: '完全切题，论点充分、论证有力；结构严谨，衔接自然；词汇丰富准确，句式多样；几乎无语言错误。' },
+      { min: 15, label: '良好（15–17 分）', desc: '切题，论点清楚、论证较充分；结构完整，衔接较好；词汇与句式有一定变化；有少量错误。' },
+      { min: 12, label: '中等（12–14 分）', desc: '基本切题，论点尚清楚但论证偏薄；结构基本完整；词汇与句式够用但缺少亮点；错误不影响理解。' },
+      { min: 9,  label: '及格（9–11 分）',  desc: '部分切题，论点不够集中；结构松散；句式单一，错误较多。' },
+      { min: 5,  label: '较差（5–8 分）',   desc: '偏离题意或论证混乱；缺乏段落组织；语言错误密集，影响理解。' },
+      { min: 0,  label: '0 分 · 白卷/无关', desc: '空白或内容与题目无关。' }
+    ],
+    adviceFocus: '专四写作看重「论证质量」而非华丽辞藻：一个段落 = 一个分论点 + 一句解释 + 一个具体例子。结尾不要重复开头，要给出解决方案或让步式总结。'
+  },
+
+  /* ---------------- 雅思 IELTS Writing Task 2 ---------------- */
+  ielts: {
+    key: 'ielts',
+    name: '雅思 IELTS 写作 Task 2',
+    shortName: 'IELTS Task 2',
+    totalMax: 9,
+    totalMode: 'average4',   // 官方四项评分标准取平均，Mechanics 仅作辅助观察
+    scoreUnit: '',
+    wordTarget: { min: 250, ideal: 275, max: 340, note: '要求不少于 250 词' },
+    strictness: 0.97,
+    dims: { content: 9, structure: 9, lexis: 9, grammar: 9, mechanics: 9 },
+    bands: [
+      { min: 8.5, label: 'Band 8.5–9 · 专家级 Expert', desc: '完全回应各部分任务要求；衔接自然到几乎不被察觉；词汇使用灵活精准，偶有 slips；语法结构多样且绝大多数句子无误。' },
+      { min: 7.5, label: 'Band 7.5–8 · 很好 Very Good', desc: '充分回应任务，立场清晰、观点展开充分；信息组织逻辑清晰，衔接得当；词汇有一定灵活度与精准度；多数句子无误。' },
+      { min: 6.5, label: 'Band 6.5–7 · 良好 Good',      desc: '回应任务要点，立场清楚但部分观点展开不足；有清晰的整体推进，衔接使用略显机械；词汇够用但偶有不当选择；语法错误不影响理解。' },
+      { min: 5.5, label: 'Band 5.5–6 · 合格 Competent', desc: '回应了任务但部分内容不相关或展开不足；段落组织存在，衔接有时不顺畅；词汇范围有限、有拼写错误；语法错误较明显但不妨碍整体理解。' },
+      { min: 4.5, label: 'Band 4.5–5 · 基础 Modest',    desc: '仅部分回应任务，格式可能不当；信息组织零散，衔接词误用；词汇重复、错误明显；语法错误频繁，影响阅读。' },
+      { min: 3.5, label: 'Band 3.5–4 · 有限 Limited',   desc: '任务回应不足，观点重复或无关；组织混乱；词汇与语法错误密集，句子难以理解。' },
+      { min: 0,   label: 'Band 3 及以下 · 极其有限',     desc: '几乎无法传达信息，或完全跑题、抄袭、字数严重不足。' }
+    ],
+    adviceFocus: '雅思 Task 2 的四项标准权重相同，写作时间建议 40 分钟：5 分钟审题列提纲（立场 + 两个分论点 + 例子），30 分钟写，5 分钟查主谓一致与冠词。字数不足 250 会被直接扣 TR 分。'
+  },
+
+  /* ---------------- 托福 TOEFL 独立写作 ---------------- */
+  toefl: {
+    key: 'toefl',
+    name: '托福 TOEFL 独立写作',
+    shortName: 'TOEFL',
+    totalMax: 30,
+    totalMode: 'sum',
+    scoreUnit: '分',
+    wordTarget: { min: 280, ideal: 330, max: 420, note: '建议 300 词以上' },
+    strictness: 0.97,
+    dims: { content: 9, structure: 7, lexis: 6, grammar: 6, mechanics: 2 },
+    bands: [
+      { min: 27, label: 'Advanced 高级（27–30）', desc: '有效回应题目，立场明确、论证充分且细节具体；组织有序，过渡自然；词汇与句式多样、使用准确；仅个别笔误。' },
+      { min: 24, label: 'Good 良好（24–26）',     desc: '回应题目，论证较充分；结构清楚、过渡基本自然；语言表达流畅，偶有错误但不影响理解。' },
+      { min: 20, label: 'Fair 中等（20–23）',     desc: '基本回应题目，论证存在但不充分或例子笼统；组织可辨，过渡生硬；句式与词汇有限，错误可见。' },
+      { min: 15, label: 'Limited 有限（15–19）',  desc: '回应不完整，观点重复；结构松散；语言错误较多，影响表达。' },
+      { min: 8,  label: 'Basic 基础（8–14）',     desc: '未能有效回应题目；组织混乱；语言错误密集，难以理解。' },
+      { min: 0,  label: '0–7 分 · 无效作答',      desc: '空白、跑题、抄袭或非英语作答。' }
+    ],
+    adviceFocus: '托福独立写作的提分关键是「具体化」：不要写 "technology is important"，要写 "online libraries let a student in a small town access the same journals as one in Beijing"。例子越具体，Development 分越高。'
+  }
+};
+
+const EXAM_ORDER = ['gaokao', 'cet4', 'cet6', 'tem4', 'ielts', 'toefl'];
+
+
+/* =====================================================================================
+ * 2. 词库
+ * ===================================================================================== */
+
+// 2.1 衔接词 / 逻辑连接词（分功能，便于评语里给出"按功能调用"的建议）
+const TRANSITIONS = [
+  'however', 'therefore', 'moreover', 'furthermore', 'in addition', 'besides', 'on the other hand',
+  'in contrast', 'by contrast', 'consequently', 'as a result', 'for example', 'for instance',
+  'first', 'firstly', 'first of all', 'second', 'secondly', 'third', 'finally', 'lastly',
+  'in conclusion', 'to sum up', 'in summary', 'all in all', 'to conclude', 'overall', 'in short',
+  'meanwhile', 'nevertheless', 'nonetheless', 'thus', 'hence', 'similarly', 'likewise',
+  'in particular', 'especially', 'above all', 'what is more', 'in other words', 'on the whole',
+  'apart from', 'in that case', 'admittedly', 'conversely', 'eventually', 'initially', 'subsequently'
+];
+
+// 2.2 复杂句/高级句式标志（用于判断句式多样性）
+const COMPLEX_MARKERS = [
+  'which', 'who', 'whom', 'whose', 'although', 'though', 'even though', 'whereas', 'while',
+  'unless', 'since', 'because', 'despite', 'in spite of', 'not only', 'rather than',
+  'in order to', 'so that', 'as long as', 'provided that', 'whether', 'whoever', 'whatever',
+  'if', 'when', 'as soon as', 'given that', 'in terms of', 'compared with', 'rather'
+];
+
+// 2.3 常见拼写错误（中国学生高频）
+const MISSPELL = {
+  goverment: 'government', enviroment: 'environment', recieve: 'receive', becouse: 'because',
+  beleive: 'believe', diffrent: 'different', importent: 'important', knowlege: 'knowledge',
+  oppotunity: 'opportunity', sucess: 'success', succesful: 'successful', studing: 'studying',
+  writting: 'writing', begining: 'beginning', neccessary: 'necessary', occured: 'occurred',
+  definately: 'definitely', seperate: 'separate', wich: 'which', wen: 'when', ther: 'there',
+  alot: 'a lot', cant: "can't", dont: "don't", doesnt: "doesn't", didnt: "didn't",
+  isnt: "isn't", wasnt: "wasn't", arent: "aren't", couldnt: "couldn't", wouldnt: "wouldn't",
+  im: "I'm", ive: "I've", thats: "that's",
+  advices: 'advice（不可数）', informations: 'information（不可数）', equipments: 'equipment（不可数）',
+  knowledges: 'knowledge（不可数）', peoples: 'people', childs: 'children', maked: 'made',
+  goed: 'went', buyed: 'bought', teached: 'taught', runned: 'ran', speaked: 'spoke',
+  enviromental: 'environmental', develope: 'develop', acheive: 'achieve', arguement: 'argument',
+  concious: 'conscious', embrass: 'embarrass', existance: 'existence', foriegn: 'foreign',
+  happend: 'happened', intresting: 'interesting', libary: 'library',
+  occassion: 'occasion', perfer: 'prefer', persue: 'pursue', probaly: 'probably',
+  refered: 'referred', relevent: 'relevant', responsability: 'responsibility', similer: 'similar',
+  succesfully: 'successfully', suprise: 'surprise', thougth: 'thought', tommorow: 'tomorrow',
+  truely: 'truly', untill: 'until', wroten: 'written', comper: 'compare', concider: 'consider',
+  effection: 'effect', benifit: 'benefit', chalenge: 'challenge', choosen: 'chosen',
+  comunication: 'communication', dependant: 'dependent', 
+};
+
+// 2.4 高频"万能短语"（不是错误，但会显得模板化，评语中提示替换）
+const CLICHES = [
+  'with the development of', 'with the rapid development of', 'every coin has two sides',
+  'as we all know', 'last but not least', 'in modern society', 'it is well known that',
+  'more and more', 'play an important role in', 'as far as i am concerned'
+];
+
+// 2.5 模糊词（词汇精度不足的典型）
+const VAGUE_WORDS = ['good', 'bad', 'thing', 'things', 'nice', 'very', 'a lot of', 'lots of', 'big', 'get'];
+
+// 2.6 同义词建议表（用于"词汇"维度的具体建议）
+const SYNONYMS = {
+  important: 'crucial / vital / significant',
+  good: 'beneficial / valuable / constructive',
+  bad: 'harmful / detrimental / counterproductive',
+  many: 'numerous / a considerable number of',
+  think: 'believe / maintain / argue',
+  big: 'substantial / considerable',
+  get: 'obtain / acquire / gain',
+  help: 'facilitate / contribute to',
+  thing: 'factor / aspect / issue',
+  people: 'individuals / the public',
+  show: 'demonstrate / indicate',
+  use: 'utilise / employ',
+  problem: 'challenge / drawback',
+  very: 'particularly / remarkably',
+  'more and more': 'a growing number of'
+};
+
+// 2.7 停用词（计算词汇多样性时剔除）
+const STOPWORDS = new Set(('a an the and or but if because so that this these those there here i you he she it we they me him her us them my your his its our their is am are was were be been being do does did have has had will would can could should may might must shall of in on at to for with from by about into over under between among during before after above below up down out off again further then once all any both each few more most other some such no nor not only own same than too very s t just don now and then also as well what which who whom whose when where why how').split(/\s+/));
+
+
+/* =====================================================================================
+ * 3. 文本工具
+ * ===================================================================================== */
+
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const roundTo = (v, step) => Math.round(v / step) * step;
+
+function esc(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function hashString(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return Math.abs(h);
+}
+
+/** 分段：优先按空行，其次按单换行 */
+function splitParagraphs(text) {
+  return text.split(/\n+/).map(p => p.trim()).filter(p => p.length > 0);
+}
+
+/** 分句：不用后行断言，兼容旧浏览器（逐个字符扫描，遇到 . ! ? 且后面是空格/结尾即断句） */
+function splitSentences(text) {
+  const flat = text.replace(/\s*\n+\s*/g, ' ').trim();
+  const out = [];
+  let buf = '';
+  for (let i = 0; i < flat.length; i++) {
+    const ch = flat[i];
+    buf += ch;
+    if (ch === '.' || ch === '!' || ch === '?') {
+      const next = flat[i + 1];
+      if (next === undefined || /\s/.test(next)) { out.push(buf.trim()); buf = ''; }
+    }
+  }
+  if (buf.trim()) out.push(buf.trim());
+  return out.filter(s => /[A-Za-z]/.test(s));
+}
+
+function splitWords(text) {
+  return text.match(/[A-Za-z][A-Za-z'’-]*/g) || [];
+}
+
+/** 统计某词/短语出现次数（整词匹配，避免 "if" 命中 "different"） */
+function countPhrase(text, phrase) {
+  const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp('(^|[^A-Za-z])' + escaped + '($|[^A-Za-z])', 'gi');
+  return (text.match(re) || []).length;
+}
+
+function stdDev(arr) {
+  if (arr.length < 2) return 0;
+  const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+  const variance = arr.reduce((a, b) => a + (b - mean) ** 2, 0) / arr.length;
+  return Math.sqrt(variance);
+}
+
+function uniqueWords(words) {
+  const seen = new Set(), out = [];
+  words.forEach(w => {
+    const k = w.toLowerCase();
+    if (!seen.has(k)) { seen.add(k); out.push(k); }
+  });
+  return out;
+}
+
+
+/* =====================================================================================
+ * 4. 诊断规则
+ * -------------------------------------------------------------------------------------
+ * 每条规则输出一个 finding：
+ *   { dim, title, detail, examples[], severity }  severity: 3=严重 2=中等 1=轻微
+ * 同一标题的 finding 会自动合并，examples 累积（最多 4 个），
+ * 保证评语里能"举例"，而不是空泛地说"有语法错误"。
+ * ===================================================================================== */
+
+function diagnose(text, sentences, paragraphs, words) {
+  const findings = [];
+  const add = (dim, title, detail, examples = [], severity = 2) => {
+    const exist = findings.find(f => f.title === title);
+    if (exist) {
+      exist.examples = exist.examples.concat(examples).slice(0, 4);
+      exist.count += examples.length || 1;
+    } else {
+      findings.push({ dim, title, detail, examples: examples.slice(0, 4), severity, count: examples.length || 1 });
+    }
+  };
+
+  const wc = words.length;
+
+  /* ---------- 4.1 拼写 ---------- */
+  const spellHits = [];
+  words.forEach(w => {
+    const low = w.toLowerCase();
+    const fix = MISSPELL[low];
+    if (fix && !fix.includes('_')) spellHits.push(w + ' → ' + fix);
+  });
+  if (spellHits.length) {
+    add('lexis', '拼写错误', '以下单词拼写不正确，属于阅卷老师最容易看见的"硬伤"，会直接影响 Lexical Resource 的印象分。',
+      spellHits.slice(0, 4), 3);
+  }
+
+  /* ---------- 4.2 标点与大小写 ---------- */
+  const capHits = [];
+  sentences.forEach(s => {
+    const first = s.match(/[A-Za-z]/);
+    if (first && /[a-z]/.test(first[0])) capHits.push('「' + s.slice(0, 18) + '…」句首未大写');
+  });
+  if (capHits.length) {
+    add('mechanics', '句首字母未大写', '英文句子的第一个字母必须大写；这是机考与人工阅卷都会直接计入的格式分。', capHits.slice(0, 3), 2);
+  }
+
+  const lowerI = (text.match(/(^|[^A-Za-z])i(?![A-Za-z])/g) || []).length;
+  if (lowerI > 0) {
+    add('mechanics', '人称代词 I 未大写', '第一人称代词 I 在任何位置都必须大写，写成小写 i 是典型格式错误。', ['i think … → I think …'], 2);
+  }
+
+  const cnPunct = (text.match(/[。，；：！？“”]/g) || []).length;
+  if (cnPunct > 0) {
+    add('mechanics', '中英文标点混用', '文中出现中文标点（，。；：""等）。英文写作必须使用半角标点 + 其后一个空格。', ['，→ ,　。→ .'], cnPunct >= 2 ? 3 : 2);
+  }
+
+  const noSpaceAfter = (text.match(/[,;:](?=[A-Za-z])/g) || []).length;
+  if (noSpaceAfter > 0) {
+    add('mechanics', '逗号/分号后缺空格', '英文标点后需要空一格再接下一个词，否则在 Word 里会显示绿色波浪线，也显得排版不专业。', ['word,word → word, word'], 1);
+  }
+
+  const spaceBefore = (text.match(/\s+[,.;:!?]/g) || []).length;
+  if (spaceBefore > 0) {
+    add('mechanics', '标点前多了空格', '英文标点紧贴前一个单词，不应有空格。', ['word , → word,'], 1);
+  }
+
+  const doubled = (text.match(/([!?.])\1+/g) || []).length;
+  if (doubled > 0) {
+    add('mechanics', '重复标点', '学术写作中不使用 !! 或 ??，一个句号/问号足够表达语气。', ['really!! → really!'], 1);
+  }
+
+  if (!/[.!?。]\s*$/.test(text.trim())) {
+    add('mechanics', '结尾缺少句号', '全文最后一句没有结束标点，建议补上句号。', [], 1);
+  }
+
+  /* ---------- 4.3 语法：主谓一致 ---------- */
+  const agreeHits = [];
+  [
+    /\b(he|she|it)\s+(go|do|have|make|take|think|like|want|need|know|say|come|live|study|play|work|look|feel|seem|get|give|help|become)\b/gi,
+    /\b(people|they|we|students|children|teenagers|parents|teachers)\s+(is|was|has|does)\b/gi,
+    /\bthere\s+(is|was)\s+(many|several|a lot of|lots of|two|three|four|five|some|much of)\b/gi
+  ].forEach(re => {
+    let m;
+    while ((m = re.exec(text)) !== null) agreeHits.push(m[0].trim());
+  });
+  if (agreeHits.length) {
+    add('grammar', '主谓不一致', '主语与谓语的单复数没有对应上，这是中国学生最高频的语法错误，也是 CET4 及格档与良好档的分界线。',
+      uniqueWords(agreeHits).slice(0, 3).map(s => s), agreeHits.length >= 3 ? 3 : 2);
+  }
+
+  /* ---------- 4.4 语法：冠词 ---------- */
+  const articleHits = [];
+  const aVowel = /\ba\s+([aeiou]\w*)/gi;
+  // 以元音字母开头、但读音是 /juː/ 或 /wʌn/ 的词，前面仍用 a
+  const aBeforeVowelOK = w => {
+    const lw = w.toLowerCase();
+    return ['one', 'once', 'european', 'ewe', 'ubiquitous', 'uk', 'us', 'usb'].includes(lw) ||
+           /^(uni|use|usu|uti|ura|ure|uro|eu)/.test(lw);
+  };
+  let am;
+  while ((am = aVowel.exec(text)) !== null) {
+    if (!aBeforeVowelOK(am[1])) articleHits.push('a ' + am[1]);
+  }
+  const anCons = /\ban\s+([bcdfgjklmnpqrstvwxyz]\w*)/gi;
+  const anExceptions = ['hour', 'honest', 'honour', 'honor', 'heir', 'mba', 'fbi', 'nba', 'x-ray'];
+  while ((am = anCons.exec(text)) !== null) {
+    if (!anExceptions.includes(am[1].toLowerCase())) articleHits.push('an ' + am[1]);
+  }
+  if (articleHits.length) {
+    add('grammar', '冠词 a/an 误用', '不定冠词要看后面单词的"音"而不是"字母"：元音音素前用 an，辅音音素前用 a。', articleHits.slice(0, 3), 2);
+  }
+
+  /* ---------- 4.5 语法：可数名词单复数 ---------- */
+  const pluralRe = /\b(many|several|various|different|few)\s+(way|student|reason|thing|problem|example|advantage|disadvantage|kind|type|year|day|book|teacher|friend|job|choice|factor|benefit|method|country|city|child)\b/gi;
+  const pluralHits = [];
+  while ((am = pluralRe.exec(text)) !== null) pluralHits.push(am[0]);
+  if (pluralHits.length) {
+    add('grammar', '可数名词复数缺失', 'many/several/various 后面必须接可数名词复数形式。', pluralHits.slice(0, 3), 2);
+  }
+
+  /* ---------- 4.6 语法：完成时动词形式 ---------- */
+  const participleRe = /\b(have|has|had)\s+(also\s+|already\s+|just\s+)?(build|make|do|go|take|write|give|see|eat|run|begin|break|choose|drive|fall|forget|know|speak|swim|teach|wear|grow|show)\b/gi;
+  const partHits = [];
+  while ((am = participleRe.exec(text)) !== null) partHits.push(am[0].trim() + ' → 应为过去分词');
+  if (partHits.length) {
+    add('grammar', '完成时动词形式错误', 'have/has/had 后面要用过去分词（built / made / gone），不能用动词原形。', partHits.slice(0, 2), 3);
+  }
+
+  /* ---------- 4.7 语法：词性误用 ---------- */
+  const nounAfterBe = /\b(is|are|was|were|be|feels?|looks?|seems?)\s+(very\s+|so\s+|quite\s+|really\s+)?(convenience|importance|difference|confidence|patience|independence|success|difficulty)\b/gi;
+  const nounHits = [];
+  while ((am = nounAfterBe.exec(text)) !== null) nounHits.push(am[0].trim());
+  if (nounHits.length) {
+    add('grammar', '词性误用（名词当形容词）', 'be 动词后应接形容词：convenient / important / different / confident，而不是名词。', nounHits.slice(0, 3), 2);
+  }
+
+  /* ---------- 4.8 语法：中式双连词 ---------- */
+  const doubleConjRe = /\b(because|although|though|since)\b[^.!?]{0,80}?\b(so|but)\b/gi;
+  const dcHits = [];
+  while ((am = doubleConjRe.exec(text)) !== null) dcHits.push(am[0].trim().slice(0, 44));
+  if (dcHits.length) {
+    add('grammar', '中式「因为…所以…」结构', '英语中 because 与 so、although 与 but 不能同时出现在一个句子里，只保留一个即可。', dcHits.slice(0, 2), 2);
+  }
+
+  /* ---------- 4.9 语法：从句独立成句 ----------
+     注意：If we run every day, we can keep fit. 是正确句子（从句+主句），
+     所以只有"整句里没有逗号、且以从属连词开头"时才判为片段。 */
+  const fragHits = sentences.filter(s => {
+    const t = s.trim();
+    if (!/^(because|although|though|which|that|when|if)\b/i.test(t)) return false;
+    return t.indexOf(',') === -1;
+  });
+  if (fragHits.length) {
+    add('grammar', '从句独立成句（句子片段）', '以 because / although / which 开头的句子不能单独成句，必须依附一个主句。', fragHits.slice(0, 2).map(s => s.slice(0, 30) + '…'), 2);
+  }
+
+  /* ---------- 4.10 语法：超长句 / 逗号拼接 ---------- */
+  const runOn = sentences.filter(s => splitWords(s).length >= 45);
+  if (runOn.length) {
+    add('grammar', '句子过长（run-on sentence）', '单句超过 45 词，读者容易丢失主干。建议在逻辑转折处断句，或用分号、which 从句改写。', runOn.slice(0, 2).map(s => s.slice(0, 40) + '…'), 2);
+  }
+  // 逗号拼接：需排除「状语从句在前」和「In my opinion, ...」这类正常写法
+  const SUB_START = /^(if|when|while|because|although|though|since|as|after|before|unless|once|even though|despite|given that|whether)\b/i;
+  const OPENER_START = /^(in my|in the|in a|for example|for instance|to sum up|to conclude|in conclusion|as a result|on the one hand|on the other hand|in addition|first|second|third|however|therefore|moreover|besides|according to|from my|as we|in short|overall|admittedly|above all|what is more|take)/i;
+  const commaSplice = sentences.filter(s => {
+    const t = s.trim();
+    if (splitWords(t).length < 16) return false;
+    if (SUB_START.test(t) || OPENER_START.test(t)) return false;
+    return /,\s+(i|he|she|it|they|we|you|this|that|these|those|there)\s+[a-z]+/i.test(t);
+  });
+  if (commaSplice.length >= 2) {
+    add('grammar', '逗号拼接（comma splice）', '两个完整句子之间只用了逗号连接。应改为句号、分号，或加 and / because 等连词。', commaSplice.slice(0, 2).map(s => s.slice(0, 38) + '…'), 1);
+  }
+
+  /* ---------- 4.11 句式多样性 ---------- */
+  const lens = sentences.map(s => splitWords(s).length).filter(n => n > 0);
+  const avgLen = lens.length ? lens.reduce((a, b) => a + b, 0) / lens.length : 0;
+  if (sentences.length >= 5 && avgLen > 0 && avgLen < 11) {
+    add('grammar', '句式偏单一', '全文平均句长仅 ' + avgLen.toFixed(1) + ' 词，几乎都是"主谓宾"短句，缺少从句与非谓语结构，Grammatical Range 很难上高分档。', ['可尝试：…, which means that … / Not only …, but … also …'], 2);
+  }
+  const complexCount = COMPLEX_MARKERS.reduce((sum, m) => sum + countPhrase(text, m), 0);
+  if (sentences.length >= 4 && complexCount === 0) {
+    add('grammar', '缺少复杂句式', '全文未检测到从句或非谓语结构（which / although / despite / not only…but also 等），这是"句式多样性"一项的主要失分点。', [], 2);
+  }
+
+  /* ---------- 4.12 词汇 ---------- */
+  const vagueHits = [];
+  VAGUE_WORDS.forEach(w => {
+    const c = countPhrase(text, w);
+    if (c >= 2 && (w === 'good' || w === 'bad' || w === 'thing' || w === 'things' || w === 'very' || w === 'a lot of')) {
+      vagueHits.push(w + ' ×' + c);
+    }
+  });
+  if (vagueHits.length) {
+    add('lexis', '词汇偏笼统', 'good / bad / thing / very 这类词信息量低，替换成具体词能立刻提升用词精度。', vagueHits.slice(0, 3), 1);
+  }
+
+  const clicheHits = CLICHES.filter(c => countPhrase(text, c) > 0);
+  if (clicheHits.length >= 2) {
+    add('lexis', '模板化表达偏多', '以下短语是"万能模板"，阅卷老师一天要看几十遍，建议至少替换一半。', clicheHits.slice(0, 3), 1);
+  }
+
+  // 重复用词
+  const contentWords = words.map(w => w.toLowerCase()).filter(w => w.length > 3 && !STOPWORDS.has(w));
+  const freq = {};
+  contentWords.forEach(w => { freq[w] = (freq[w] || 0) + 1; });
+  const repeated = Object.keys(freq).map(w => ({ word: w, count: freq[w] }))
+    .filter(o => o.count >= 4).sort((a, b) => b.count - a.count);
+  if (repeated.length && contentWords.length > 30) {
+    const top = repeated[0];
+    if (top.count / contentWords.length > 0.05) {
+      add('lexis', '关键词重复过多', '「' + top.word + '」出现 ' + top.count + ' 次，占比偏高，说明在用同一个词承担多个意思。',
+        [SYNONYMS[top.word] ? top.word + ' → ' + SYNONYMS[top.word] : '建议准备 2–3 个同义替换'], 2);
+    }
+  }
+
+  /* ---------- 4.13 内容与结构 ---------- */
+  const paragraphCount = paragraphs.length;
+  if (paragraphCount === 1 && wc > 80) {
+    add('structure', '全文只有一段', '没有分段，读者无法快速定位你的分论点。建议至少分成"引入—论证—结论"三段。', [], 3);
+  }
+  if (paragraphCount > 6) {
+    add('structure', '段落过于零碎', '共 ' + paragraphCount + ' 段，段落太碎会让论证失去整体感，建议合并为 3–5 段。', [], 1);
+  }
+
+  const transUsed = TRANSITIONS.filter(t => countPhrase(text, t) > 0);
+  if (sentences.length >= 4 && transUsed.length === 0) {
+    add('structure', '缺少衔接词', '句与句之间没有逻辑连接词，读起来像若干句独立的话堆在一起。', [], 3);
+  } else if (sentences.length >= 8 && transUsed.length <= 2) {
+    add('structure', '衔接手段单一', '全文只用到 ' + transUsed.length + ' 种衔接词（' + (transUsed.join('、') || '无') + '），建议扩充到 4–6 种，并覆盖转折、因果、举例三类。', [], 2);
+  }
+
+  const hasThesis = /(in my (opinion|view)|i (strongly )?(believe|think|agree|disagree)|from my perspective|it is (clear|obvious|evident) that|this essay (will )?(argue|discuss))/i.test(text);
+  if (!hasThesis && wc > 60) {
+    add('content', '立场句不明确', '开头没有一句清晰的立场句（thesis statement），阅卷老师需要"猜"你的观点，Task Response 会被压档。', ['可加：In my view, … / I firmly believe that …'], 2);
+  }
+
+  const hasConclusion = /(in conclusion|to sum up|in summary|all in all|to conclude|in a word|on the whole|overall,)/i.test(text);
+  if (!hasConclusion && wc > 100) {
+    add('content', '缺少收尾总结', '结尾没有明显的总结句，文章像是"写到没话说"就停了。补一句 In conclusion, … 能明显改善结构完整度。', [], 2);
+  }
+
+  const exampleCount = (text.match(/\b(for example|for instance|such as|take .{1,25} as an example|e\.g\.|a case in point)/gi) || []).length;
+  if (exampleCount === 0 && wc > 90) {
+    add('content', '例证标志不明显', '全文没有出现 for example / such as / a case in point 这类明确的举例标志。即使你写了隐含的例子，阅卷老师也更愿意看到显性信号——它能证明你在"论证"而不是"表态"。', [], 2);
+  }
+
+  // 字数
+  return { findings, metrics: { lexErr: articleHits.length + pluralHits.length + nounHits.length, spellErr: spellHits.length, transUsed, transCount: transUsed.length, exampleCount, hasThesis, hasConclusion, complexCount, repeated, clicheHits, vagueHits, capErr: capHits.length, mechErr: capHits.length + lowerI + cnPunct + noSpaceAfter + spaceBefore + doubled, avgLen } };
+}
+
+
+/* =====================================================================================
+ * 5. 打分引擎
+ * -------------------------------------------------------------------------------------
+ * 思路：先算出每个维度的 0~1 "达成率"，再乘以该维度的满分。
+ * 达成率的输入全部来自 diagnose() 的客观指标，因此结果可解释、可复现。
+ * ===================================================================================== */
+
+function computeScores(exam, metrics, stats) {
+  const { wordCount: wc, sentenceCount, paraCount, avgSentLen, sentLenStdev, ttr, advRatio, longRatio } = stats;
+  const t = exam.wordTarget;
+
+  /* ---- 5.1 字数因子：不足按比例扣（曲线惩罚，写得越少扣得越狠），超出上限轻微扣 ---- */
+  let lenFactor;
+  if (wc < t.min) lenFactor = 0.9 * Math.pow(wc / t.min, 1.6);
+  else if (wc <= t.max) lenFactor = 1;
+  else lenFactor = Math.max(0.85, 1 - (wc - t.max) / (t.max * 4));
+  lenFactor = clamp(lenFactor, 0.15, 1);
+
+  /* ---- 5.2 内容：字数 45% + 论证要素 35% + 段落 20% ---- */
+  const argFactor = clamp(0.2 + (metrics.hasThesis ? 0.3 : 0) + (metrics.hasConclusion ? 0.25 : 0) + Math.min(0.25, metrics.exampleCount * 0.125), 0, 1);
+  const paraFactor = paraCount >= 3 ? 1 : (paraCount === 2 ? 0.82 : 0.62);
+  let contentRaw = 0.45 * lenFactor + 0.35 * argFactor + 0.20 * paraFactor;
+  contentRaw -= Math.min(0.10, metrics.clicheHits.length * 0.03);
+  if (wc < t.min) contentRaw -= 0.07;   // 字数不足直接压内容分（真实考试也是这样）
+
+  /* ---- 5.3 结构：衔接词种类 50% + 段落 30% + 首尾呼应 20% ---- */
+  const transFactor = clamp(metrics.transCount / 6, 0, 1);
+  let structureRaw = 0.5 * transFactor + 0.3 * paraFactor + 0.2 * ((metrics.hasThesis && metrics.hasConclusion) ? 1 : 0.55);
+  if (paraCount === 1) structureRaw -= 0.08;
+
+  /* ---- 5.4 词汇：多样性 42% + 高级词 30% + 重复度 28% ---- */
+  const ttrScore = ttr >= 0.60 ? 1 : clamp((ttr - 0.32) / 0.28, 0.2, 1);
+  const advScore = clamp(advRatio / 0.12, 0.2, 1);
+  const topRepeatRatio = metrics.repeated.length ? metrics.repeated[0].count / Math.max(20, wc * 0.55) : 0;
+  const repeatScore = clamp(1 - topRepeatRatio * 3, 0.5, 1);
+  let lexisRaw = 0.34 * ttrScore + 0.34 * advScore + 0.32 * repeatScore;
+  lexisRaw -= Math.min(0.28, metrics.spellErr * 0.055);
+  lexisRaw -= Math.min(0.08, metrics.vagueHits.length * 0.02);
+  lexisRaw -= Math.min(0.15, (metrics.lexErr || 0) * 0.04);   // 冠词/单复数/词性错误属于"用词准确性"
+  if (wc < t.min * 0.8) lexisRaw -= 0.05;   // 文本太短，词汇多样性会"虚高"，做一次校正
+
+  /* ---- 5.5 语法：错误率 60% + 句式变化 40% ---- */
+  const errPer100 = metrics.errCount / Math.max(1, wc / 100);
+  const accuracy = clamp(1 - errPer100 * 0.35, 0.12, 1);
+  const complexRatio = sentenceCount ? metrics.complexCount / sentenceCount : 0;
+  // 句式多样性 = 平均句长（短句堆砌拿不到分）+ 复杂结构密度
+  const lengthScore = clamp((avgSentLen - 8) / 10, 0, 1);
+  const variety = clamp(0.5 * lengthScore + 0.5 * clamp(complexRatio / 0.40, 0, 1), 0, 1);
+  let grammarRaw = 0.60 * accuracy + 0.40 * variety;
+  if (longRatio > 0.45) grammarRaw -= 0.06;
+
+  /* ---- 5.6 规范：错误密度 ---- */
+  const mechPer50 = metrics.mechErr / Math.max(1, wc / 50);
+  let mechRaw = clamp(1 - mechPer50 * 0.22, 0.15, 1);
+
+  /* ---- 5.7 交叉影响：语言（语法+词汇）太差时，内容与结构也读不出来，一起打折 ----
+     这一条很符合真实阅卷经验：满篇语法错误，阅卷员根本没耐心找你的论点。 */
+  const languageRatio = clamp(grammarRaw * 0.6 + lexisRaw * 0.4, 0, 1);
+  if (languageRatio < 0.70) {
+    const shrink = 1 - (0.70 - languageRatio) * 0.35;
+    contentRaw *= shrink;
+    structureRaw *= shrink;
+  }
+
+  /* ---- 5.8 严格系数 + 微小确定性抖动（同一篇作文结果稳定，不同作文有区分） ---- */
+  const jitter = ((hashString(stats.raw.slice(0, 400)) % 9) - 4) * 0.008;
+  const applyStrict = v => clamp((v + jitter) * exam.strictness, 0.12, 1);
+
+  const raws = {
+    content: applyStrict(contentRaw),
+    structure: applyStrict(structureRaw),
+    lexis: applyStrict(lexisRaw),
+    grammar: applyStrict(grammarRaw),
+    mechanics: applyStrict(mechRaw)
+  };
+
+  /* ---- 5.9 换算成卷面分 ---- */
+  const dims = DIM_ORDER.map(key => {
+    const max = exam.dims[key];
+    const raw = raws[key];
+    let score = roundTo(raw * max, 0.5);
+    score = clamp(score, 0, max);
+    // 满分档留给真正无可挑剔的作文，本工具最多给到"满分 - 0.5"
+    if (score >= max && max > 2) score = max - 0.5;
+    // 雅思各维度本身是 0–9 的半分制，roundTo 0.5 正好符合官方习惯
+    return {
+      key,
+      zh: DIM_META[key].zh,
+      en: DIM_META[key].en,
+      short: DIM_META[key].short,
+      color: DIM_META[key].color,
+      max,
+      score: Math.round(score * 10) / 10,
+      normalized: Math.round((score / max) * 100) / 10,   // 0–10 标准化分
+      ratio: score / max,
+      counted: !(exam.totalMode === 'average4' && key === 'mechanics')
+    };
+  });
+
+  /* ---- 5.10 总分 ---- */
+  let total;
+  if (exam.totalMode === 'average4') {
+    // 雅思：四项标准取平均，按官方习惯四舍五入到 0.5
+    const four = dims.filter(d => d.counted);
+    total = roundTo(four.reduce((s, d) => s + d.score, 0) / four.length, 0.5);
+    total = clamp(total, 0, 9);
+  } else {
+    // 其他考试：各维度相加后向下取整（不足 1 分不计，整体偏保守，避免"虚高"）
+    total = Math.floor(dims.reduce((s, d) => s + d.score, 0) + 1e-6);
+    total = Math.min(total, exam.totalMax);
+  }
+
+  /* ---- 5.10 档位 ---- */
+  const band = exam.bands.find(b => total >= b.min) || exam.bands[exam.bands.length - 1];
+
+  return { dims, total, band };
+}
+
+
+/* =====================================================================================
+ * 6. 评语生成
+ * -------------------------------------------------------------------------------------
+ * 原则：每条评语都要能"指回原文"——引用具体单词、具体衔接词、具体数字。
+ * 所以这里不是固定模板，而是「数据 → 句子」的拼装：
+ *   优点：从候选池按可信度打分，取前 3 条，每条都带证据
+ *   问题：直接来自 findings（已带 examples）
+ *   建议：按最弱的 2–3 个维度给出可执行动作 + 该考试的备考方向
+ * ===================================================================================== */
+
+function buildComment(exam, result, metrics, stats, findings) {
+  const { total, band, dims } = result;
+  const weakest = [...dims].sort((a, b) => a.ratio - b.ratio);
+  const strongest = [...dims].sort((a, b) => b.ratio - a.ratio);
+
+  /* ---------- ① 优点 ---------- */
+  const strengths = [];
+  const push = (score, text) => strengths.push({ score, text });
+
+  if (metrics.transCount >= 4) {
+    push(9, '衔接词用得比较有意识，全文出现了 ' + metrics.transCount + ' 种（' + metrics.transUsed.slice(0, 4).join('、') + '），段与段之间不需要读者自己去"脑补"逻辑关系。');
+  } else if (metrics.transCount >= 2) {
+    push(5, '已经会用 ' + metrics.transUsed.slice(0, 3).join('、') + ' 这类连接词来标记逻辑走向，方向是对的，只是种类还可以再丰富一些。');
+  }
+
+  const complexExamples = [];
+  if (/which/i.test(stats.raw)) complexExamples.push('which 引导的定语从句');
+  if (/although|though|even though/i.test(stats.raw)) complexExamples.push('although 让步状语从句');
+  if (/not only/i.test(stats.raw)) complexExamples.push('not only … but also 倒装/并列结构');
+  if (/despite|in spite of/i.test(stats.raw)) complexExamples.push('despite 介词短语');
+  if (complexExamples.length && metrics.complexCount >= 3 && stats.avgSentLen >= 12) {
+    push(8, '句式不是清一色的简单句，文中出现了 ' + complexExamples.slice(0, 2).join('、') + '，说明你已经在尝试用复杂结构承载更复杂的意思。');
+  }
+
+  const advWords = uniqueWords(stats.words.filter(w => w.length >= 9)).slice(0, 5);
+  if (stats.advRatio >= 0.10 && advWords.length >= 3 && stats.wordCount >= exam.wordTarget.min * 0.8) {
+    push(7, '文中出现了 ' + advWords.slice(0, 3).join('、') + ' 这类信息量更足的词（比 good / thing 更具体），属于阅卷老师会留意的加分点，不是全靠基础词汇硬撑。');
+  }
+
+  if (metrics.hasThesis && metrics.hasConclusion) {
+    push(8, '首尾是呼应的：开头给出了明确立场，结尾用「' + (stats.raw.match(/in conclusion|to sum up|in summary|all in all|to conclude|in a word|on the whole|overall/i) || ['总结句'])[0] + '」收束，整篇文章有"闭环感"。');
+  } else if (metrics.hasThesis) {
+    push(4, '开头能看出你的立场，读者一进来就知道你要谈什么，这一点比很多同学写得清楚。');
+  }
+
+  if (metrics.exampleCount >= 1 && stats.wordCount >= exam.wordTarget.min) {
+    push(6, '论证里有 ' + metrics.exampleCount + ' 处例证标志（for example / such as 一类），没有停留在空表态，这是内容分能站住的关键。');
+  }
+
+  if (stats.wordCount >= exam.wordTarget.min && stats.wordCount <= exam.wordTarget.max) {
+    push(6, '全文 ' + stats.wordCount + ' 词，落在 ' + exam.shortName + ' 要求的 ' + exam.wordTarget.min + '–' + exam.wordTarget.max + ' 词区间内，不会因为篇幅被扣分。');
+  }
+
+  if (stats.paraCount >= 3 && stats.paraCount <= 5) {
+    push(5, '分了 ' + stats.paraCount + ' 段，段落数量刚好，每段基本只承担一个功能，阅读节奏舒服。');
+  }
+
+  if (metrics.spellErr === 0 && metrics.mechErr <= 2 && stats.wordCount > 60) {
+    push(7, '拼写和标点基本干净，全文只发现 ' + (metrics.spellErr + metrics.mechErr) + ' 处格式小问题——这类"低级失分"你基本守住了。');
+  }
+
+  strengths.sort((a, b) => b.score - a.score);
+  let strengthTexts = strengths.slice(0, 3).map(s => s.text);
+
+  // 兜底：如果实在没有亮点，也要说人话，而不是硬夸
+  if (strengthTexts.length === 0) {
+    strengthTexts = ['这篇文章目前最确定的优点是「意思基本能读懂」：' + (stats.wordCount < exam.wordTarget.min
+      ? '虽然只有 ' + stats.wordCount + ' 词，明显没写够，但你已经把想说的方向摆出来了，接下来是把每一句写完整。'
+      : '句子虽然简单，但没有出现大段无法理解的内容，这说明你的基础词汇是够用的，问题主要在"怎么组织"。')];
+  }
+  if (strengthTexts.length === 1 && stats.wordCount > 100) {
+    strengthTexts.push('另外，全文 ' + stats.sentenceCount + ' 句、平均句长 ' + stats.avgSentLen.toFixed(1) + ' 词，属于 readable（可读）的范围，没有出现大段失控的长句。');
+  }
+
+  /* ---------- ② 问题诊断 ---------- */
+  const problemFindings = [...findings].sort((a, b) => (b.severity - a.severity) || (a.dim === 'mechanics' ? 1 : -1)).slice(0, 5);
+  const problems = problemFindings.map(f => {
+    let s = '【' + DIM_META[f.dim].zh + '】' + f.title + '：' + f.detail;
+    if (f.examples && f.examples.length) s += ' 例：' + f.examples.slice(0, 2).join('；') + '。';
+    return s;
+  });
+
+  // 如果问题太少（说明文章确实好），补充"高分段的瓶颈"提示
+  if (problems.length < 3) {
+    const w = weakest[0];
+    problems.push('【' + w.zh + '】这是你目前五项里相对最弱的一项（' + w.score + '/' + w.max + '）。在这个档位往上走，靠的不再是"不出错"，而是' +
+      (w.key === 'lexis' ? '用词的具体与精准——把抽象名词换成可感知的细节。' : w.key === 'content' ? '论证的深度——多问一层"为什么"，再给一个具体场景。' : w.key === 'structure' ? '段落之间的推进感——每段结尾加一句回扣句，让下一段的出现显得"必须"。' : '句式的节奏变化——长短句交替，关键句用短句砸下来。'));
+  }
+
+  /* ---------- ③ 修改建议 ---------- */
+  const advice = [];
+  const adviceByDim = {
+    content: [
+      '每段第一句写成"主题句"（topic sentence），公式是：分论点 + 因为。例如 "The main reason is that online courses save commuting time."，后面再展开解释和举例。',
+      '论证时用"观点—解释—例子"三步走：先给判断，再用 because 说明原因，最后用 for example 落到一个具体场景（谁、在哪、做了什么、结果如何）。'
+    ],
+    structure: [
+      '按功能背衔接词，而不是按字母背：转折（however / nevertheless / by contrast）、因果（therefore / as a result / consequently）、举例（for instance / a case in point）、递进（moreover / what is more）。写作时"想功能—调词"。',
+      '每段结尾加一句"回扣句"，把这段的例子重新拉回你的立场，例如 "This suggests that …"，文章会立刻显得有推进感。'
+    ],
+    lexis: [
+      '把文中反复出现的词做一次"同义替换表"：' + (metrics.repeated.length ? '「' + metrics.repeated[0].word + '」→ ' + (SYNONYMS[metrics.repeated[0].word] || '准备 2–3 个同义表达') + '；' : '') + 'important → crucial / vital；good → beneficial / constructive。',
+      '少用 very + 形容词，改用单个精准词：very important → crucial，very big → enormous，very tired → exhausted。这一步能让用词分明显上移。'
+    ],
+    grammar: [
+      '写完留 2 分钟做"三查"：主谓一致、时态、可数名词单复数。这三类错误占中国学生语法失分的一半以上，而且是阅卷老师最容易一眼看到的。',
+      '每段至少安排一个复杂句，模板可用：…, which means that …（定语从句）/ Although …, …（让步）/ Not only …, but … also …（倒装）/ Faced with …, we …（非谓语）。'
+    ],
+    mechanics: [
+      '交卷前做"标点三件事"：句首字母大写、句末有标点、逗号后空一格；同时确认没有混入中文标点（，。；）。',
+      '专有名词（China / English / Monday）与第一人称 I 必须大写；不要把句号写成中文的"。"。'
+    ]
+  };
+
+  let adviceCount = 0;
+  weakest.slice(0, 3).forEach(d => {
+    if (d.ratio < 0.72 && adviceCount < 4) {
+      const pool = adviceByDim[d.key] || [];
+      if (pool[0]) { advice.push(pool[0]); adviceCount++; }
+      if (d.ratio < 0.50 && pool[1] && adviceCount < 4) { advice.push(pool[1]); adviceCount++; }
+    }
+  });
+
+  if (advice.length < 2) {
+    advice.push('冲高分的动作：把结论段从"重复开头"改成"给出条件或让步"，例如 "This is not to say that …; rather, …"，显示你能看到问题的另一面。');
+    advice.push('建立自己的"错误清单"：把每次被指出的错误记在一页纸上，下一篇只盯这 3 条，比盲目多写 10 篇有效。');
+  }
+
+  // 该考试的备考方向
+  advice.push('针对' + exam.shortName + '：' + exam.adviceFocus);
+
+  /* ---------- ④ 一句话总评 ---------- */
+  const verdict = buildVerdict(exam, total, band, dims, stats);
+
+  return { strengths: strengthTexts, problems, advice, verdict };
+}
+
+function buildVerdict(exam, total, band, dims, stats) {
+  const best = [...dims].sort((a, b) => b.ratio - a.ratio)[0];
+  const worst = [...dims].sort((a, b) => a.ratio - b.ratio)[0];
+  const gap = best.ratio - worst.ratio;
+  const overall = total / exam.totalMax;
+  let s = '这篇作文在' + exam.shortName + '体系下拿到 ' + formatTotal(exam, total) + '，落在「' + band.label.split('（')[0] + '」。';
+  if (gap > 0.28) {
+    s += (overall < 0.55 ? '五项里相对好一点的是' : '五项里最稳的是') + best.zh + '（' + best.score + '/' + best.max + '），' +
+         (overall < 0.55 ? '但最需要立刻补的是' : '最拖后腿的是') + worst.zh + '（' + worst.score + '/' + worst.max + '），下一步集中补这一项，提分效率最高。';
+  } else if (overall > 0.8) {
+    s += '五项发展比较均衡，已经进入"细节决定档位"的阶段，重点是把偶发错误清零。';
+  } else {
+    s += '五项水平比较接近，说明问题不在某一项，而在整体表达还停留在"能读懂"这一层，需要往"写得准、写得深"推进。';
+  }
+  if (stats.wordCount < exam.wordTarget.min) {
+    s += '另外提醒：字数 ' + stats.wordCount + ' 词，低于要求的 ' + exam.wordTarget.min + ' 词，这一项在真实考试中会直接压档。';
+  }
+  return s;
+}
+
+function formatTotal(exam, total) {
+  if (exam.totalMode === 'average4') return total.toFixed(1);
+  return total + ' / ' + exam.totalMax;
+}
+
+
+/* =====================================================================================
+ * 7. 主流程：analyzeEssay()
+ * ===================================================================================== */
+
+function analyzeEssay(rawText, examKey) {
+  const exam = EXAM_SYSTEMS[examKey];
+  const text = rawText.replace(/\r/g, '').trim();
+
+  // --- 基础统计 ---
+  const paragraphs = splitParagraphs(text);
+  const sentences = splitSentences(text);
+  const words = splitWords(text);
+  const wordCount = words.length;
+
+  const lowerWords = words.map(w => w.toLowerCase());
+  const contentWords = lowerWords.filter(w => w.length > 2 && !STOPWORDS.has(w));
+  const ttr = contentWords.length ? uniqueWords(contentWords).length / contentWords.length : 0;
+  const advRatio = wordCount ? lowerWords.filter(w => w.length >= 8).length / wordCount : 0;
+  const sentenceLens = sentences.map(s => splitWords(s).length);
+  const longRatio = sentences.length ? sentenceLens.filter(n => n >= 25).length / sentences.length : 0;
+
+  const stats = {
+    raw: text,
+    words: lowerWords,
+    wordCount,
+    sentenceCount: sentences.length,
+    paraCount: paragraphs.length,
+    avgSentLen: sentenceLens.length ? sentenceLens.reduce((a, b) => a + b, 0) / sentenceLens.length : 0,
+    sentLenStdev: stdDev(sentenceLens),
+    longRatio,
+    ttr,
+    advRatio
+  };
+
+  // --- 诊断 ---
+  const diag = diagnose(text, sentences, paragraphs, words);
+  const findings = diag.findings;
+  const metrics = diag.metrics;
+
+  // 语法错误总数 = 语法类 findings 的计数之和
+  metrics.errCount = findings.filter(f => f.dim === 'grammar').reduce((s, f) => s + Math.max(1, f.count), 0);
+
+  // --- 打分 ---
+  const scored = computeScores(exam, metrics, stats);
+  const comment = buildComment(exam, scored, metrics, stats, findings);
+
+  return { exam, examKey, stats, metrics, findings, dims: scored.dims, total: scored.total, band: scored.band, comment };
+}
+
+
+/* =====================================================================================
+ * 8. 界面渲染
+ * ===================================================================================== */
+
+let radarChart = null;
+let lastResult = null;
+
+const $ = id => document.getElementById(id);
+
+/* ---------- 8.1 初始化下拉框 ---------- */
+function initExamSelect() {
+  const sel = $('examSelect');
+  sel.innerHTML = EXAM_ORDER.map(k => '<option value="' + k + '">' + EXAM_SYSTEMS[k].name + '</option>').join('');
+  sel.value = 'cet4';
+  updateExamMeta();
+}
+
+function updateExamMeta() {
+  const exam = EXAM_SYSTEMS[$('examSelect').value];
+  const isAvg = exam.totalMode === 'average4';
+
+  const dimsText = DIM_ORDER.map(k => {
+    const max = exam.dims[k];
+    const isAux = isAvg && k === 'mechanics';
+    // 雅思是四项平均，每项各占 25%；其他体系按满分占比换算
+    const weight = isAux ? '辅助，不计入总分' : (isAvg ? '25%' : Math.round((max / exam.totalMax) * 100) + '%');
+    return DIM_META[k].zh.split('与')[0] + ' ' + max + '分（' + weight + '）';
+  }).join(' · ');
+
+  $('examMeta').innerHTML = '<b>满分 ' + exam.totalMax + ' 分</b> ｜ 字数：' + exam.wordTarget.note +
+    '<br>维度配额：' + dimsText +
+    '<br>说明：' + (isAvg ? '四项评分标准取平均，Mechanics 仅作辅助观察，不计入总分。' : '各维度得分相加即为卷面总分。');
+  $('targetHint').textContent = '目标 ' + exam.wordTarget.min + '–' + exam.wordTarget.max + ' 词';
+  updateLiveCount();
+}
+
+function updateLiveCount() {
+  const v = $('essayInput').value;
+  const wc = splitWords(v).length;
+  $('liveCount').textContent = wc + ' 词 · ' + v.length + ' 字符';
+  const exam = EXAM_SYSTEMS[$('examSelect').value];
+  const el = $('targetHint');
+  if (wc === 0) { el.textContent = '目标 ' + exam.wordTarget.min + '–' + exam.wordTarget.max + ' 词'; el.style.color = ''; return; }
+  if (wc < exam.wordTarget.min) { el.textContent = '还差 ' + (exam.wordTarget.min - wc) + ' 词'; el.style.color = '#d97706'; }
+  else if (wc > exam.wordTarget.max) { el.textContent = '超出建议上限 ' + (wc - exam.wordTarget.max) + ' 词'; el.style.color = '#d97706'; }
+  else { el.textContent = '✓ 字数达标'; el.style.color = '#059669'; }
+}
+
+/* ---------- 8.2 评分流程（带 loading 动画） ---------- */
+const LOADING_STEPS = ['正在切分句子与段落…', '正在统计词频与句式…', '正在核对拼写与标点…', '正在对照评分细则…', '正在生成个性化评语…'];
+
+function runGrading() {
+  const text = $('essayInput').value.trim();
+  const wc = splitWords(text).length;
+
+  if (wc < 20) {
+    showToast('作文太短啦，至少写 20 个词再提交 🙂');
+    return;
+  }
+
+  const examKey = $('examSelect').value;
+
+  $('resultEmpty').hidden = true;
+  $('resultContent').hidden = true;
+  $('loadingBox').hidden = false;
+  $('btnGrade').disabled = true;
+  $('btnGrade').textContent = '批阅中…';
+
+  let step = 0;
+  $('loadingText').textContent = LOADING_STEPS[0];
+
+  const timer = setInterval(() => {
+    step++;
+    if (step < LOADING_STEPS.length) {
+      $('loadingText').textContent = LOADING_STEPS[step];
+    }
+  }, 300);
+
+  setTimeout(() => {
+    clearInterval(timer);
+
+    const result = analyzeEssay(text, examKey);
+    lastResult = result;
+
+    $('loadingBox').hidden = true;
+    $('resultContent').hidden = false;
+    $('resultContent').classList.remove('fade-in');
+    void $('resultContent').offsetWidth;   // 触发重绘，让动画重播
+    $('resultContent').classList.add('fade-in');
+    $('btnGrade').disabled = false;
+    $('btnGrade').textContent = '开始批阅 Essay';
+
+    renderResult(result);
+    maybeAutoSync();   // 新增：按需存入学习档案并取回跨篇提示（失败自动忽略）
+
+    // 移动端：自动滚动到结果区
+    if (window.innerWidth < 1024) {
+      $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, 1550);
+}
+
+/* ---------- 8.3 渲染结果 ---------- */
+function renderResult(r) {
+  const { exam, stats, dims, total, band, comment, findings, metrics } = r;
+
+  // 总分
+  $('totalScore').textContent = exam.totalMode === 'average4' ? total.toFixed(1) : total;
+  $('totalMax').textContent = exam.totalMode === 'average4' ? ' / 9.0' : ' / ' + exam.totalMax;
+  $('bandLabel').textContent = band.label;
+  $('bandDesc').textContent = band.desc;
+
+  // 维度条
+  $('dimList').innerHTML = dims.map(d => {
+    const pct = (d.ratio * 100).toFixed(1);
+    return '<div class="dim-row' + (d.counted ? '' : ' aux') + '">' +
+      '<div class="dim-name">' + d.zh + '<i>' + d.en + '</i></div>' +
+      '<div class="dim-val">' + d.score + ' / ' + d.max + '　<span style="color:#94a3b8;font-weight:600;">' + d.normalized.toFixed(1) + '</span></div>' +
+      '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
+      '</div>';
+  }).join('');
+
+  // 雷达图标题 = 当前考试体系名称
+  $('radarTitle').textContent = exam.name;
+
+  // 关键指标
+  $('statsRow').innerHTML = [
+    { v: stats.wordCount, k: '词数' },
+    { v: stats.sentenceCount, k: '句数' },
+    { v: stats.paraCount, k: '段落' },
+    { v: stats.avgSentLen.toFixed(1), k: '平均句长' },
+    { v: metrics.transCount, k: '衔接词种类' },
+    { v: metrics.spellErr + metrics.mechErr, k: '格式/拼写问题' }
+  ].map(s => '<div class="stat"><b>' + s.v + '</b><span>' + s.k + '</span></div>').join('');
+
+  // 雷达图
+  renderRadar(r);
+
+  // 评语
+  const block = (cls, icon, title, en, list) =>
+    '<div class="comment-block ' + cls + '">' +
+      '<h4><span class="dot" style="background:' + icon + '"></span>' + title +
+      '<em style="font-style:normal;font-weight:500;font-size:.7rem;color:#94a3b8;">' + en + '</em></h4>' +
+      '<ul>' + list.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>' +
+    '</div>';
+
+  $('commentBox').innerHTML =
+    '<p style="font-size:.85rem;line-height:1.85;color:#0f172a;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:.7rem .85rem;margin:0 0 .7rem;">' +
+      '<b style="color:#0369a1;">一句话总评：</b>' + esc(comment.verdict) + '</p>' +
+    block('c-good', '#34d399', '① 优点总结', 'What works', comment.strengths) +
+    block('c-bad', '#fb7185', '② 问题诊断', 'What to fix', comment.problems) +
+    block('c-tip', '#fbbf24', '③ 修改建议', 'Next steps', comment.advice);
+
+  // 问题清单
+  $('findingsSummary').textContent = findings.length
+    ? '逐条问题清单（共 ' + findings.length + ' 项，点击展开/收起）'
+    : '逐条问题清单（未发现可量化的格式 / 语法问题）';
+  $('findingsList').innerHTML = findings.length
+    ? findings.map(f => {
+        const ex = (f.examples || []).map(e => '<span class="ex">' + esc(e) + '</span>').join('');
+        return '<div class="finding-item">' +
+          '<span class="ftag" data-sev="' + f.severity + '">' + DIM_META[f.dim].zh + '</span>' +
+          '<b>' + esc(f.title) + '</b>　' + esc(f.detail) +
+          (ex ? '<div style="margin-top:.2rem;">' + ex + '</div>' : '') +
+          '</div>';
+      }).join('')
+    : '<div class="finding-item">没有发现明显的拼写、语法或标点问题 👍 这一项你已经"清零"了。</div>';
+}
+
+/* ---------- 8.4 雷达图 ---------- */
+function renderRadar(r) {
+  const { exam, dims } = r;
+  const canvas = $('radarCanvas');
+
+  // CDN 加载失败时降级
+  if (typeof Chart === 'undefined') {
+    $('radarFallback').hidden = false;
+    canvas.style.display = 'none';
+    return;
+  }
+  $('radarFallback').hidden = true;
+  canvas.style.display = 'block';
+
+  if (radarChart) radarChart.destroy();
+
+  const ctx = canvas.getContext('2d');
+  radarChart = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: dims.map(d => d.short),   // 每根轴 = 一个维度（中英对照）
+      datasets: [
+        {
+          label: exam.name,
+          data: dims.map(d => d.normalized),
+          borderColor: '#0284c7',
+          backgroundColor: 'rgba(14,165,233,.20)',
+          borderWidth: 2,
+          pointBackgroundColor: '#0284c7',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 1.5,
+          pointRadius: 4,
+          pointHoverRadius: 6
+        },
+        {
+          // 满分参考线：帮助学生直观看到"离满分还有多远"
+          label: '满分参考 Full mark',
+          data: dims.map(() => 10),
+          borderColor: 'rgba(148,163,184,.55)',
+          borderDash: [5, 5],
+          borderWidth: 1,
+          backgroundColor: 'transparent',
+          pointRadius: 0
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 700, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: item => item.datasetIndex === 0
+              ? dims[item.dataIndex].zh + '：' + item.formattedValue + ' / 10（卷面 ' + dims[item.dataIndex].score + ' 分）'
+              : '满分 10'
+          }
+        }
+      },
+      scales: {
+        r: {
+          min: 0, max: 10,
+          beginAtZero: true,
+          ticks: { stepSize: 2, color: '#94a3b8', backdropColor: 'transparent', font: { size: 10 } },
+          grid: { color: '#e6edf5' },
+          angleLines: { color: '#e6edf5' },
+          pointLabels: { color: '#334155', font: { size: 11, weight: '600' } }
+        }
+      }
+    }
+  });
+}
+
+/* ---------- 8.5 导出 ---------- */
+function buildReportText(r) {
+  const { exam, stats, dims, total, band, comment, findings } = r;
+  const lines = [];
+  lines.push('English Essay Grader · 作文批阅报告');
+  lines.push('生成时间：' + new Date().toLocaleString('zh-CN'));
+  lines.push('评分体系：' + exam.name);
+  lines.push('总分：' + formatTotal(exam, total) + '　档位：' + band.label);
+  lines.push('（AI 参考分，仅供学习，不等于考场官方阅卷分数）');
+  lines.push('');
+  lines.push('【五维得分】');
+  dims.forEach(d => lines.push('  · ' + d.zh + '（' + d.en + '）：' + d.score + ' / ' + d.max + '，标准化 ' + d.normalized.toFixed(1) + ' / 10'));
+  lines.push('');
+  lines.push('【文本统计】词数 ' + stats.wordCount + '｜句数 ' + stats.sentenceCount + '｜段落 ' + stats.paraCount + '｜平均句长 ' + stats.avgSentLen.toFixed(1));
+  lines.push('');
+  lines.push('【一句话总评】' + comment.verdict);
+  lines.push('');
+  lines.push('【① 优点总结】');
+  comment.strengths.forEach((t, i) => lines.push('  ' + (i + 1) + '. ' + t));
+  lines.push('');
+  lines.push('【② 问题诊断】');
+  comment.problems.forEach((t, i) => lines.push('  ' + (i + 1) + '. ' + t));
+  lines.push('');
+  lines.push('【③ 修改建议】');
+  comment.advice.forEach((t, i) => lines.push('  ' + (i + 1) + '. ' + t));
+  lines.push('');
+  lines.push('【逐条问题清单】');
+  findings.forEach(f => lines.push('  · [' + DIM_META[f.dim].zh + '] ' + f.title + '：' + f.detail + (f.examples.length ? ' 例：' + f.examples.join('；') : '')));
+  lines.push('');
+  lines.push('—— 由 English Essay Grader 生成（MIT License）');
+  return lines.join('\n');
+}
+
+function downloadReport() {
+  if (!lastResult) return;
+  const blob = new Blob([buildReportText(lastResult)], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'essay-report-' + Date.now() + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('报告已导出 (.txt)');
+}
+
+/* ---------- 8.6 Toast ---------- */
+let toastTimer = null;
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+
+/* =====================================================================================
+ * 9. 课堂演示样例
+ * -------------------------------------------------------------------------------------
+ * 三篇样例覆盖"高分 / 中等 / 待改进"，点一下就能载入，课堂上不用现场打字。
+ * ===================================================================================== */
+
+const SAMPLES = {
+  high: {
+    exam: 'ielts',
+    label: '高分范文 · 雅思 Task 2',
+    text: `Whether undergraduates should be free to choose their own majors or be steered towards subjects that society urgently needs is a question that divides opinion. In my view, while practical considerations matter, intellectual curiosity should remain the foundation of higher education.
+
+Those who favour a utilitarian approach argue that public money should serve public needs. Governments subsidise universities largely because they expect a return in the form of engineers, doctors and teachers, and a country that produces too many graduates in oversubscribed fields may find itself short of the specialists it requires. From this perspective, steering students towards science and technology is a matter of national efficiency rather than personal preference.
+
+However, this argument underestimates the value of genuine interest. Students who study a subject they care about are more likely to persevere through difficult coursework, to produce original research and, ultimately, to contribute something their society did not know it needed. A musician or a historian may not fill an immediate vacancy, yet the cultural and critical capacities they develop are precisely what a healthy democracy depends on. For example, a student who spends four years on medieval literature may end up designing the algorithms that make a search engine culturally literate.
+
+In conclusion, although the practical demands of the economy cannot be ignored, they should inform rather than dictate students' choices. The most sensible policy is one that offers generous funding and honest guidance while preserving the freedom to follow an intellectual passion, because a society that only trains technicians will eventually lose the ability to ask what the technology is for.`
+  },
+  mid: {
+    exam: 'cet4',
+    label: '中等作文 · CET4',
+    text: `Nowadays, more and more college students spend their spare time on playing mobile phones. In my opinion, we should do more physical exercise instead of sitting in the dormitory all day.
+
+First, physical exercise is good for our health. Many students stay up late and eat fast food, so they are not strong. If we run for thirty minutes every day, we can keep fit and feel more energetic in class. Second, exercise can help us make friends. When we play basketball or badminton with our classmates, we learn how to work together as a team. Our goverment have also build many free playgrounds near the campus, which is very convenience for us.
+
+However, some students say they are too busy to do exercise. I think this is not a good reason, because health is more important than anything. There is many students who study all day and then feel tired in the evening, and they often get sick before the exam.
+
+In a word, college life is not only about study. I hope every student can take part in sports and have a healthy body.`
+  },
+  low: {
+    exam: 'gaokao',
+    label: '问题作文 · 高考',
+    text: `nowadays many people think english is very important. i think so too. because english is a international language, so we must learn it well.
+
+there are many way to learn english, for example listen to music, watch movie and talk with foreigner. but some students doesnt like english. they think it is difficult and boring.
+
+in my opinion, if we study hard, we can learn english well and make our future better`
+  }
+};
+
+function loadSample(key) {
+  const s = SAMPLES[key];
+  if (!s) return;
+  $('essayInput').value = s.text;
+  $('examSelect').value = s.exam;
+  updateExamMeta();
+  showToast('已载入：' + s.label + '（自动切换到对应体系）');
+  if (window.innerWidth < 1024) $('essayInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+
+/* =====================================================================================
+ * 10. 学习档案联动（新增模块 B 在批阅页的唯一接入点）
+ * -------------------------------------------------------------------------------------
+ *  三条纪律，课上可以重点讲：
+ *   1) 不重复实现评分：存进档案的就是本页刚算出来的结果，后端只做跨篇聚合。
+ *   2) 失败即降级：服务没起、学号非法、网络超时，全都只隐藏提示，绝不阻断批阅。
+ *      —— 所以不装 Node、直接双击 index.html，页面行为跟以前完全一样。
+ *   3) 提示可关闭：关闭后写入 localStorage，不再打扰；左侧提供"重新开启"。
+ * ===================================================================================== */
+const HINT_OFF_KEY = 'eg_hint_off';
+const STUDENT_ID_RE = /^[A-Za-z0-9_-]{3,64}$/;
+const PROFILE_API_BASE = resolveProfileApiBase();
+
+/** API 地址解析优先级：?api= 参数 > localStorage 覆盖 > 同源 > file:// 时默认本机 8787 */
+function resolveProfileApiBase() {
+  try {
+    const q = new URLSearchParams(location.search).get('api');
+    if (q) return q.replace(/\/+$/, '');
+    const saved = localStorage.getItem('eg_api_base');
+    if (saved) return saved.replace(/\/+$/, '');
+  } catch (e) { /* 隐私模式下 localStorage 可能不可用，忽略 */ }
+  return location.protocol === 'file:' ? 'http://localhost:8787' : '';
+}
+
+function lsGet(key) {
+  try { return localStorage.getItem(key); } catch (e) { return null; }
+}
+function lsSet(key, val) {
+  try { localStorage.setItem(key, val); } catch (e) { /* 忽略 */ }
+}
+
+/** 带超时的 fetch：服务没起时不要让学生对着"检测服务中…"发呆 */
+async function profileApi(path, init) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4000);
+  try {
+    const res = await fetch(PROFILE_API_BASE + path, {
+      method: (init && init.method) || 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      body: init && init.body ? JSON.stringify(init.body) : undefined,
+      signal: ctrl.signal
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+    }
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function initProfileLink() {
+  const input = $('studentId');
+  if (!input) return;
+  const stateEl = $('apiState');
+  const syncBtn = $('btnSync');
+
+  input.value = lsGet('eg_student_id') || '';
+  updateProfileLink();
+
+  // 探测本地服务；失败就把按钮置灰并说明原因（不影响批阅）
+  profileApi('/api/health').then(() => {
+    stateEl.textContent = '本地服务已连接';
+    stateEl.className = 'api-state on';
+  }).catch(() => {
+    stateEl.textContent = '未连接本地服务（不影响批阅）';
+    stateEl.className = 'api-state off';
+    syncBtn.disabled = true;
+    syncBtn.title = '需要先运行 npm start 启动本地服务';
+  });
+
+  syncBtn.addEventListener('click', () => syncToProfile(false));
+  input.addEventListener('input', updateProfileLink);
+
+  $('btnHintClose').addEventListener('click', () => {
+    lsSet(HINT_OFF_KEY, '1');
+    $('profileHint').hidden = true;
+    showToast('已关闭跨篇提示，可在左侧重新开启');
+  });
+  $('btnHintReset').addEventListener('click', () => {
+    try { localStorage.removeItem(HINT_OFF_KEY); } catch (e) { /* 忽略 */ }
+    showToast('已重新开启跨篇提示');
+  });
+}
+
+function updateProfileLink() {
+  const v = ($('studentId').value || '').trim();
+  $('linkProfile').href = 'frontend/src/pages/LearningProfile/index.html' +
+    (v ? '?student=' + encodeURIComponent(v) : '');
+}
+
+/** 把当前这次批阅存进档案；silent=true 时不弹 toast（自动同步用） */
+async function syncToProfile(silent) {
+  if (!lastResult) { if (!silent) showToast('先批阅一篇作文再存入档案'); return null; }
+  const sid = ($('studentId').value || '').trim();
+  if (!sid) { if (!silent) showToast('请先填写匿名学号'); return null; }
+  if (!STUDENT_ID_RE.test(sid)) { if (!silent) showToast('学号只能用字母/数字/下划线/短横线（3–64 位）'); return null; }
+
+  try {
+    const out = await profileApi('/api/analytics/records', {
+      method: 'POST',
+      body: {
+        text: lastResult.stats.raw,
+        exam_key: lastResult.examKey,
+        student_id: sid,
+        meta: { ui: 'index.html' }
+      }
+    });
+    lsSet('eg_student_id', sid);
+    if (!silent) showToast(out.deduplicated ? '这版作文已在档案里了' : '已存入学习档案');
+    renderProfileHint(out.hint);
+    return out;
+  } catch (err) {
+    if (!silent) showToast('存入失败：' + err.message);
+    return null;
+  }
+}
+
+/** 批阅完成后按需自动同步（勾选 + 填了学号才触发） */
+function maybeAutoSync() {
+  $('profileHint').hidden = true;                      // 换作文先清掉旧提示，避免张冠李戴
+  const sid = ($('studentId').value || '').trim();
+  if (!sid || lsGet(HINT_OFF_KEY) === '1' || !$('autoSync').checked) return;
+  if (!STUDENT_ID_RE.test(sid)) return;
+  syncToProfile(true);
+}
+
+function renderProfileHint(hint) {
+  const box = $('profileHint');
+  if (!hint || !hint.available || lsGet(HINT_OFF_KEY) === '1') { box.hidden = true; return; }
+  $('profileHintText').textContent = hint.text;
+  $('profileHintNote').textContent = hint.mode === 'recur'
+    ? '来自学习档案的跨篇统计（共 ' + hint.sample_size + ' 篇），不属于本次评分结果。'
+    : '这是历史错误的提醒，本篇未检测到该类问题。';
+  box.hidden = false;
+}
+
+
+/* =====================================================================================
+ * 11. 事件绑定 & 启动
+ * ===================================================================================== */
+
+document.addEventListener('DOMContentLoaded', () => {
+  initExamSelect();
+
+  $('examSelect').addEventListener('change', () => {
+    updateExamMeta();
+    // 已出结果时，切体系自动重算（课堂演示"同一篇作文换体系"很有说服力）
+    if (lastResult) runGrading();
+  });
+
+  $('essayInput').addEventListener('input', updateLiveCount);
+
+  $('btnGrade').addEventListener('click', () => {
+    // 把焦点从 textarea 移开，避免移动端键盘遮挡结果
+    $('essayInput').blur();
+    runGrading();
+  });
+
+  $('btnClear').addEventListener('click', () => {
+    $('essayInput').value = '';
+    updateLiveCount();
+    lastResult = null;
+    if (radarChart) { radarChart.destroy(); radarChart = null; }
+    $('resultContent').hidden = true;
+    $('loadingBox').hidden = true;
+    $('resultEmpty').hidden = false;
+    $('essayInput').focus();
+    showToast('已清空');
+  });
+
+  $('btnCopy').addEventListener('click', () => {
+    if (!lastResult) return;
+    const text = buildReportText(lastResult);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => showToast('评语已复制到剪贴板')).catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  });
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); showToast('评语已复制'); }
+    catch (e) { showToast('复制失败，请手动选择文本'); }
+    document.body.removeChild(ta);
+  }
+
+  $('btnExport').addEventListener('click', downloadReport);
+  $('btnRegrade').addEventListener('click', () => { $('btnGrade').click(); });
+
+  document.querySelectorAll('[data-sample]').forEach(btn => {
+    btn.addEventListener('click', () => loadSample(btn.getAttribute('data-sample')));
+  });
+
+  // 页面就绪提示（课堂演示时可直接展示）
+  updateLiveCount();
+
+  // 新增：学习档案联动初始化（服务未启动时自动降级，不影响本页原有功能）
+  initProfileLink();
+});
+</script>
+</body>
+</html>
