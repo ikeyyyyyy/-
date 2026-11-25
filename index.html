@@ -235,8 +235,8 @@
       <span class="tag">六套评分体系</span>
       <span class="tag">MIT License</span>
       <!-- 新增模块入口（增量，不影响本页原有功能；后端未启动时点开会有提示，本页仍可离线使用） -->
-      <a class="tag tag-link" href="frontend/src/pages/MultimodalUpload/index.html" target="_blank" rel="noopener">📷 图片/PDF 批改</a>
-      <a class="tag tag-link" href="frontend/src/pages/LearningProfile/index.html" target="_blank" rel="noopener">📈 学习档案</a>
+      <a class="tag tag-link" href="frontend/src/pages/MultimodalUpload/index.html" target="_blank" rel="noopener" data-page="multimodal">📷 图片/PDF 批改</a>
+      <a class="tag tag-link" href="frontend/src/pages/LearningProfile/index.html" target="_blank" rel="noopener" data-page="profile">📈 学习档案</a>
     </div>
   </div>
 </header>
@@ -306,7 +306,7 @@
         <div class="profile-row">
           <input id="studentId" class="mini-input" placeholder="匿名学号（可选）" autocomplete="off" spellcheck="false">
           <button id="btnSync" class="mini-btn" type="button">存入档案</button>
-          <a id="linkProfile" class="mini-link" href="frontend/src/pages/LearningProfile/index.html" target="_blank" rel="noopener">查看档案 →</a>
+          <a id="linkProfile" class="mini-link" href="frontend/src/pages/LearningProfile/index.html" target="_blank" rel="noopener" data-page="profile">查看档案 →</a>
         </div>
         <div class="profile-row" style="margin-top:.45rem;">
           <label class="mini-check"><input type="checkbox" id="autoSync" checked> 批阅后自动存入</label>
@@ -1686,7 +1686,7 @@ const HINT_OFF_KEY = 'eg_hint_off';
 const STUDENT_ID_RE = /^[A-Za-z0-9_-]{3,64}$/;
 const PROFILE_API_BASE = resolveProfileApiBase();
 
-/** API 地址解析优先级：?api= 参数 > localStorage 覆盖 > 同源 > file:// 时默认本机 8787 */
+/** API 地址解析优先级：?api= 参数 > localStorage 覆盖 > 同源 > 本机默认 8787 */
 function resolveProfileApiBase() {
   try {
     const q = new URLSearchParams(location.search).get('api');
@@ -1694,8 +1694,80 @@ function resolveProfileApiBase() {
     const saved = localStorage.getItem('eg_api_base');
     if (saved) return saved.replace(/\/+$/, '');
   } catch (e) { /* 隐私模式下 localStorage 可能不可用，忽略 */ }
-  return location.protocol === 'file:' ? 'http://localhost:8787' : '';
+  // file:// 直接打开，或预览面板的 srcdoc（about:srcdoc，origin 为 null，不存在「同源」）
+  // 都按本机默认端口处理，否则这两类环境里学习档案永远连不上。
+  // 统一用 127.0.0.1 而不是 localhost：两者是不同 origin，跳转时混用会被当成跨域。
+  return isOpaqueDoc() ? 'http://127.0.0.1:8787' : '';
 }
+
+/* ===================== 附加页面跳转（预览面板 srcdoc 兼容） =====================
+ * 双击打开 index.html 时地址是 file:///.../index.html，相对链接以文件所在目录为基准，能跳。
+ * 但 IDE 预览面板是把 HTML 塞进 <iframe srcdoc> 渲染的：文档地址变成 about:srcdoc，
+ * baseURI 继承宿主程序页面，于是 frontend/src/pages/... 会被解析到宿主目录里，
+ * 结果就是「点标签没反应 / 打开是空白」。所以：
+ *   1) 正常浏览器（file:// 或 http 同源）→ 仍按相对路径新标签打开；
+ *   2) srcdoc 等无基准文档 → 用探测到的本地服务地址 + 仓库内绝对路径跳转；
+ *   3) 服务也没起 → 明确提示怎么起，而不是静默失败。
+ * ========================================================================= */
+const PAGE_ROUTES = {
+  multimodal: { path: '/frontend/src/pages/MultimodalUpload/index.html', rel: 'frontend/src/pages/MultimodalUpload/index.html' },
+  profile:    { path: '/frontend/src/pages/LearningProfile/index.html',  rel: 'frontend/src/pages/LearningProfile/index.html' }
+};
+
+/** about:srcdoc / blob: / data: 这类文档没有真实路径，相对链接没有基准 */
+function isOpaqueDoc() {
+  return !(location.protocol === 'file:' || /^https?:$/.test(location.protocol));
+}
+
+let navBaseCache;
+async function resolveNavBase() {
+  if (navBaseCache !== undefined) return navBaseCache;
+  const list = [];
+  if (PROFILE_API_BASE) list.push(PROFILE_API_BASE);
+  list.push('http://127.0.0.1:8787', 'http://localhost:8787');
+  for (const raw of [...new Set(list)]) {
+    const b = raw.replace(/\/+$/, '');
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 1500);
+      const res = await fetch(b + '/api/health', { signal: ctrl.signal, cache: 'no-store' });
+      clearTimeout(timer);
+      if (res.ok) { navBaseCache = b; return b; }
+    } catch (e) { /* 换下一个候选 */ }
+  }
+  navBaseCache = null;
+  return null;
+}
+
+async function openPage(name, query) {
+  const route = PAGE_ROUTES[name];
+  if (!route) return;
+  const qs = query || '';
+
+  if (!isOpaqueDoc()) {
+    const url = route.rel + qs;               // 有正常基准，保留新标签打开的习惯
+    const win = window.open(url, '_blank');
+    if (!win) location.href = url;            // 被拦截就在本页跳
+    return;
+  }
+
+  showToast('正在查找本地服务…');
+  const base = await resolveNavBase();
+  if (!base) {
+    showToast('预览面板里相对链接没有基准：先运行 start.cmd 启动服务，连上后再点一次');
+    return;
+  }
+  location.href = base + route.path + qs;     // srcdoc 里导航到 http 页面是允许的
+}
+
+// 事件委托：入口按钮是静态的，但「查看档案」的 href 会随学号变化，交给委托读取最新值
+document.addEventListener('click', ev => {
+  const a = ev.target.closest('a[data-page]');
+  if (!a) return;
+  ev.preventDefault();
+  const q = (a.getAttribute('href') || '').split('?')[1];
+  openPage(a.getAttribute('data-page'), q ? '?' + q : '');
+});
 
 function lsGet(key) {
   try { return localStorage.getItem(key); } catch (e) { return null; }

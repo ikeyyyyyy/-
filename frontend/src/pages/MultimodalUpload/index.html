@@ -99,8 +99,8 @@
       <p class="sub">多模态输入 · OCR · 图像与文本预处理 · 复用现有评分管线</p>
     </div>
     <div class="nav-links">
-      <a class="nav-link" href="../../../../index.html">← 文本批改</a>
-      <a class="nav-link" href="../LearningProfile/index.html">学习档案 →</a>
+      <a class="nav-link" href="../../../../index.html" data-page="grading" title="回到文本批改">← 文本批改</a>
+      <a class="nav-link" href="../LearningProfile/index.html" data-page="profile" title="查看学习档案">学习档案 →</a>
       <span class="conn" id="engineState" title="后端连接状态">● 连接中…</span>
     </div>
   </div>
@@ -256,6 +256,70 @@ const NET = (() => {
     forget() { base = null; }
   };
 })();
+
+/* ---------------- 1.5 跨页跳转（为什么不能只写相对链接） ----------------
+ * 直接双击打开本文件时，页面地址是 file:///.../MultimodalUpload/index.html，
+ * 相对链接 ../../../../index.html 以「文件所在目录」为基准，能正常跳转。
+ *
+ * 但 IDE 预览面板不是这样打开的：它把 HTML 塞进 <iframe srcdoc> 渲染，
+ * 文档地址变成 about:srcdoc，baseURI 继承宿主程序（WorkBuddy 自己的页面），
+ * 于是 ../../../../index.html 会解析到宿主目录里去 —— 点下去不是 404 就是被拦，
+ * 表现就是「点了没反应 / 打不开」。实测：srcdoc 里 baseURI 确实等于父页面地址。
+ *
+ * 所以这里改成：有后端地址时用「后端地址 + 仓库内绝对路径」跳（后端托管了全部页面，
+ * 从 srcdoc 里导航到 http 页面是允许的）；没有后端时才退回相对链接；
+ * 两者都不成立就明确提示，而不是静默失败。
+ * ---------------------------------------------------------------------- */
+const PAGE_ROUTES = {
+  grading:    { path: '/index.html',                                     rel: '../../../../index.html' },
+  profile:    { path: '/frontend/src/pages/LearningProfile/index.html',   rel: '../LearningProfile/index.html' },
+  multimodal: { path: '/frontend/src/pages/MultimodalUpload/index.html',  rel: './index.html' }
+};
+
+/** about:srcdoc / blob: / data: 这类文档没有真实路径，相对链接没有基准 */
+function isOpaqueDoc() {
+  return !(location.protocol === 'file:' || /^https?:$/.test(location.protocol));
+}
+
+/** 无基准文档里唯一可用的线索：baseURI 的协议+主机（父页面的地址） */
+function originFromBaseURI() {
+  try {
+    const u = new URL(document.baseURI);
+    return /^https?:$/.test(u.protocol) ? u.origin : '';
+  } catch (e) { return ''; }
+}
+
+async function goPage(name) {
+  const route = PAGE_ROUTES[name];
+  if (!route) return;
+
+  if (NET.base === null) {                      // 还没连上就先找一次
+    const found = await NET.connect();
+    if (!found && isOpaqueDoc()) {
+      toast('预览面板里相对链接没有基准：先运行 start.cmd 启动服务，本页连上后再点一次');
+      return;
+    }
+  }
+
+  let url;
+  if (NET.base) url = NET.base + route.path;    // 已探到服务（含跨端口）→ 仓库内绝对路径
+  else if (!isOpaqueDoc()) url = route.rel;     // file:// / 同源 http：相对链接本来就对
+  else url = originFromBaseURI() + route.path;  // 同源托管的面板：用 baseURI 的主机兜底
+
+  if (!url) {
+    toast('预览面板里相对链接没有基准：先运行 start.cmd 启动服务，本页连上后再点一次');
+    return;
+  }
+  location.href = url;
+}
+
+// 用事件委托而不是逐个绑定：空态里的「去批改一篇」等按钮是后插入 DOM 的
+document.addEventListener('click', ev => {
+  const el = ev.target.closest('[data-page]');
+  if (!el) return;
+  ev.preventDefault();
+  goPage(el.getAttribute('data-page'));
+});
 
 const $ = id => document.getElementById(id);
 const EMPTY_HTML = $('empty').innerHTML;      // 记住默认空态，连上后要还原

@@ -84,8 +84,8 @@
       <p class="sub">跨篇趋势 · 错误类型分布 · 顽固错误 Top 3 · 升档建议</p>
     </div>
     <div class="nav-links">
-      <a class="nav-link" href="../../../../index.html">← 文本批改</a>
-      <a class="nav-link" href="../MultimodalUpload/index.html">图片批改 →</a>
+      <a class="nav-link" href="../../../../index.html" data-page="grading" title="回到文本批改">← 文本批改</a>
+      <a class="nav-link" href="../MultimodalUpload/index.html" data-page="multimodal" title="切换到图片/PDF 批改">图片批改 →</a>
       <span class="conn" id="apiState" title="后端连接状态">● 连接中…</span>
     </div>
   </div>
@@ -183,6 +183,62 @@ const NET = (() => {
     setBase(v) { base = norm(v); try { localStorage.setItem('eg_api_base', base); } catch (e) {} }
   };
 })();
+
+/* ---------------- 1.5 跨页跳转（为什么不能只写相对链接） ----------------
+ * 双击打开本文件时地址是 file:///.../LearningProfile/index.html，相对链接能正常跳；
+ * 但 IDE 预览面板用 <iframe srcdoc> 渲染，文档地址是 about:srcdoc，baseURI 继承宿主页面，
+ * 相对链接会解析到宿主目录 → 点了没反应。所以有后端地址时走后端 + 仓库内绝对路径。
+ * ---------------------------------------------------------------------- */
+const PAGE_ROUTES = {
+  grading:    { path: '/index.html',                                     rel: '../../../../index.html' },
+  profile:    { path: '/frontend/src/pages/LearningProfile/index.html',   rel: './index.html' },
+  multimodal: { path: '/frontend/src/pages/MultimodalUpload/index.html',  rel: '../MultimodalUpload/index.html' }
+};
+
+/** about:srcdoc / blob: / data: 这类文档没有真实路径，相对链接没有基准 */
+function isOpaqueDoc() {
+  return !(location.protocol === 'file:' || /^https?:$/.test(location.protocol));
+}
+
+/** 无基准文档里唯一可用的线索：baseURI 的协议+主机（父页面的地址） */
+function originFromBaseURI() {
+  try {
+    const u = new URL(document.baseURI);
+    return /^https?:$/.test(u.protocol) ? u.origin : '';
+  } catch (e) { return ''; }
+}
+
+async function goPage(name) {
+  const route = PAGE_ROUTES[name];
+  if (!route) return;
+
+  if (NET.base === null) {                      // 还没连上就先找一次
+    const found = await NET.connect();
+    if (!found && isOpaqueDoc()) {
+      toast('预览面板里相对链接没有基准：先运行 start.cmd 启动服务，本页连上后再点一次');
+      return;
+    }
+  }
+
+  let url;
+  if (NET.base) url = NET.base + route.path;    // 已探到服务（含跨端口）→ 仓库内绝对路径
+  else if (!isOpaqueDoc()) url = route.rel;     // file:// / 同源 http：相对链接本来就对
+  else url = originFromBaseURI() + route.path;  // 同源托管的面板：用 baseURI 的主机兜底
+
+  if (!url) {
+    toast('预览面板里相对链接没有基准：先运行 start.cmd 启动服务，本页连上后再点一次');
+    return;
+  }
+  location.href = url;
+}
+
+// 用事件委托而不是逐个绑定：空态里的「去批改一篇」等按钮是后插入 DOM 的
+document.addEventListener('click', ev => {
+  const el = ev.target.closest('[data-page]');
+  if (!el) return;
+  ev.preventDefault();
+  goPage(el.getAttribute('data-page'));
+});
 
 const $ = id => document.getElementById(id);
 const charts = {};
@@ -340,7 +396,7 @@ function renderEmpty(opts) {
       '</p>' +
       '<div class="row" style="justify-content:center;margin-top:.9rem;">' +
         '<button class="btn btn-primary" id="btnTryDemo">用 anon_demo_01 试试</button>' +
-        '<a class="btn btn-ghost" href="../../../../index.html" style="text-decoration:none;display:inline-block;">去批改一篇 →</a>' +
+        '<a class="btn btn-ghost" href="../../../../index.html" data-page="grading" style="text-decoration:none;display:inline-block;">去批改一篇 →</a>' +
       '</div>' +
       '<p class="note" style="margin-top:.7rem;">批改页填了学号再批阅，这篇就会自动进档案。</p>' +
     '</div>';
