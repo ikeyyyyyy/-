@@ -1,0 +1,33 @@
+{
+  "note": "mock OCR 引擎的夹具清单。仓库里不存放任何真实学生图片或真实 OCR 输出：图片由 scripts/make-sample-images.mjs 从同目录的 .txt 渲染而来，因此 text_file 就是图片的真实内容。confidence 是 demo 配置值，不是真实 OCR 置信度，仅用于演示 needs_review 分支。生产环境请把 OCR_ENGINE 切到 paddle / vlm / cloud。",
+  "fixtures": [
+    {
+      "id": "printed_sample",
+      "kind": "printed",
+      "filename": "printed_sample.png",
+      "text_file": "printed_sample.txt",
+      "sha256": "39e8d098834122dbb482f19fd2fbb6eae7ddc0d499cc532d0d24b8e24c69f886",
+      "confidence": 0.96,
+      "image_meta": {
+        "rotation_deg": 0,
+        "denoise": "none",
+        "binarized": false,
+        "provenance": "由 scripts/make-sample-images.mjs 从 printed_sample.txt 渲染的印刷体测试图，非真实扫描件"
+      }
+    },
+    {
+      "id": "handwriting_sample",
+      "kind": "handwriting",
+      "filename": "handwriting_sample.png",
+      "text_file": "handwriting_sample.txt",
+      "sha256": "f7995c9e65fe9065d6354704a9487b5596acdcf94285a1ba29db0abc82d314b9",
+      "confidence": 0.62,
+      "image_meta": {
+        "rotation_deg": -1.1,
+        "denoise": "none",
+        "deskewed": false,
+        "provenance": "用手写体字体渲染的模拟手写样例（非真实手写照片），仅用于验证低置信度分支"
+      }
+    }
+  ]
+}

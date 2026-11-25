@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图片/PDF 作文批改 · English Essay Grader</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{
+    --blue:#0ea5e9; --blue-dark:#0369a1; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --bg:#f6fbff; --green:#15803d; --amber:#b45309; --red:#be123c;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Inter","Segoe UI","PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;line-height:1.65;}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 1rem;}
+  header.site{background:#fff;border-bottom:1px solid var(--line);}
+  .hdr{display:flex;align-items:center;gap:.75rem;padding:1rem 0;flex-wrap:wrap;}
+  .mark{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#fff;display:grid;place-items:center;font-size:1.15rem;}
+  h1{font-size:1.12rem;margin:0;font-weight:800;letter-spacing:-.01em;}
+  .sub{font-size:.74rem;color:var(--muted);margin:0;}
+  .nav-link{margin-left:auto;font-size:.76rem;color:var(--blue-dark);text-decoration:none;border:1px solid #bae6fd;background:#f0f9ff;padding:.3rem .7rem;border-radius:999px;}
+  .nav-link:hover{background:#e0f2fe;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 2px rgba(15,23,42,.04);}
+  .card-pad{padding:1.1rem 1.15rem;}
+  .grid{display:grid;grid-template-columns:minmax(0,0.92fr) minmax(0,1.08fr);gap:1.1rem;align-items:start;margin:1.1rem 0 2rem;}
+  @media(max-width:960px){.grid{grid-template-columns:1fr;}}
+  .label{font-size:.74rem;font-weight:700;color:#334155;letter-spacing:.02em;display:block;margin:.85rem 0 .35rem;}
+  .label .en{font-weight:500;color:#94a3b8;font-size:.68rem;margin-left:.25rem;}
+  select,input[type=text]{width:100%;border:1px solid #cbd5e1;border-radius:9px;padding:.5rem .65rem;font-size:.85rem;background:#fff;color:var(--ink);}
+  select:focus,input:focus{outline:2px solid #bae6fd;border-color:#38bdf8;}
+  .drop{border:2px dashed #bae6fd;background:#f8fcff;border-radius:14px;padding:1.5rem 1rem;text-align:center;cursor:pointer;transition:.15s;}
+  .drop:hover,.drop.over{background:#eff9ff;border-color:#38bdf8;}
+  .drop .ico{font-size:1.7rem;}
+  .drop p{margin:.4rem 0 0;font-size:.82rem;color:#475569;}
+  .drop small{color:#94a3b8;font-size:.72rem;}
+  .btn{border:none;border-radius:9px;padding:.55rem 1rem;font-size:.85rem;font-weight:700;cursor:pointer;transition:.15s;}
+  .btn-primary{background:var(--blue);color:#fff;}
+  .btn-primary:hover{background:var(--blue-dark);}
+  .btn-primary:disabled{background:#cbd5e1;cursor:not-allowed;}
+  .btn-ghost{background:#f1f5f9;color:#334155;}
+  .btn-ghost:hover{background:#e2e8f0;}
+  .row{display:flex;gap:.55rem;flex-wrap:wrap;align-items:center;}
+  .preview{margin-top:.9rem;}
+  .preview img{width:100%;border-radius:10px;border:1px solid var(--line);max-height:280px;object-fit:contain;background:#f8fafc;}
+  .bar{height:7px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:.6rem;}
+  .bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#38bdf8,#0ea5e9);transition:width .2s;}
+  .status{font-size:.76rem;color:var(--muted);}
+  .empty{color:#94a3b8;font-size:.84rem;text-align:center;padding:2.6rem 1rem;}
+  .banner{border-radius:10px;padding:.6rem .8rem;font-size:.78rem;line-height:1.7;margin-bottom:.9rem;}
+  .banner.warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e;}
+  .banner.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;}
+  .banner.err{background:#fff1f2;border:1px solid #fecdd3;color:#9f1239;}
+  .big{font-size:2.1rem;font-weight:800;letter-spacing:-.02em;line-height:1;}
+  .pill{display:inline-block;font-size:.7rem;font-weight:700;padding:.16rem .5rem;border-radius:999px;background:#e0f2fe;color:#0369a1;}
+  .dim{display:grid;grid-template-columns:1fr 96px;gap:.5rem;align-items:center;margin:.42rem 0;font-size:.78rem;}
+  .dim .track{height:7px;background:#eef2f7;border-radius:999px;overflow:hidden;}
+  .dim .track>i{display:block;height:100%;background:var(--blue);}
+  .dim .val{text-align:right;font-variant-numeric:tabular-nums;color:#475569;}
+  .sec-title{font-size:.82rem;font-weight:800;color:#0f172a;margin:1.1rem 0 .5rem;display:flex;align-items:center;gap:.4rem;}
+  .sec-title em{font-style:normal;font-weight:500;color:#94a3b8;font-size:.7rem;}
+  textarea{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:.65rem .75rem;font-size:.85rem;line-height:1.75;font-family:ui-monospace,"SFMono-Regular",Consolas,monospace;min-height:190px;resize:vertical;}
+  textarea:focus{outline:2px solid #bae6fd;border-color:#38bdf8;}
+  table.kv{width:100%;border-collapse:collapse;font-size:.76rem;}
+  table.kv th{text-align:left;font-weight:700;color:#475569;padding:.3rem .4rem;width:110px;vertical-align:top;}
+  table.kv td{padding:.3rem .4rem;color:#334155;}
+  details{border:1px solid var(--line);border-radius:10px;padding:.5rem .7rem;margin-top:.5rem;background:#fcfdff;}
+  summary{cursor:pointer;font-size:.78rem;font-weight:700;color:#334155;}
+  ul.tight{margin:.4rem 0 0;padding-left:1.1rem;font-size:.76rem;color:#475569;line-height:1.75;}
+  .cmt{background:#f8fafc;border-left:3px solid var(--blue);border-radius:0 10px 10px 0;padding:.7rem .8rem;margin:.55rem 0;font-size:.8rem;line-height:1.8;}
+  .cmt h4{margin:0 0 .2rem;font-size:.76rem;color:var(--blue-dark);}
+  .cmt.good{border-left-color:#22c55e;} .cmt.good h4{color:#15803d;}
+  .cmt.bad{border-left-color:#f59e0b;} .cmt.bad h4{color:#b45309;}
+  .cmt.tip{border-left-color:#8b5cf6;} .cmt.tip h4{color:#6d28d9;}
+  code{background:#eef2f7;padding:.05rem .28rem;border-radius:4px;font-size:.74rem;}
+  footer.site{text-align:center;font-size:.72rem;color:var(--muted);padding:1.4rem 0 2.4rem;border-top:1px solid var(--line);}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);background:#0f172a;color:#fff;padding:.55rem 1rem;border-radius:10px;font-size:.8rem;opacity:0;pointer-events:none;transition:.2s;z-index:99;}
+  .toast.show{opacity:1;transform:translate(-50%,0);}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap hdr">
+    <div class="mark">📷</div>
+    <div>
+      <h1>图片 / PDF 作文批改</h1>
+      <p class="sub">多模态输入 · OCR · 图像与文本预处理 · 复用现有评分管线</p>
+    </div>
+    <a class="nav-link" href="../../../index.html">← 返回文本批改</a>
+    <a class="nav-link" href="../LearningProfile/index.html">学习档案 →</a>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="banner warn" style="margin-top:1rem;">
+    <b>识别方式说明：</b>本页的 OCR 结果取决于后端配置的引擎（<code>OCR_ENGINE</code>）。
+    默认 <code>mock</code> 只回放仓库里的 demo 夹具，<b>不会真的识别你的照片</b>；
+    要识别真实拍照/手写，请把 <code>OCR_ENGINE</code> 切成 <code>paddle</code> / <code>vlm</code> / <code>cloud</code> 并配置对应端点。
+    低置信度结果会标记「需人工复核」，但仍会送入评分供参考。
+  </div>
+
+  <div class="grid">
+    <!-- ============ 左：上传 ============ -->
+    <section class="card card-pad">
+      <div class="row" style="justify-content:space-between;">
+        <b style="font-size:.9rem;">① 上传作文图片 / PDF</b>
+        <span class="status" id="engineState">引擎检测中…</span>
+      </div>
+
+      <div class="drop" id="drop" style="margin-top:.7rem;" tabindex="0" role="button" aria-label="选择或拖入图片">
+        <div class="ico">🖼️</div>
+        <p><b>点击选择</b> 或把图片拖到这里</p>
+        <small>支持 PNG / JPG / WebP / PDF，单文件 ≤ 12MB；手机端会直接调用相机</small>
+      </div>
+      <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp,application/pdf" hidden>
+      <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
+      <div class="row" style="margin-top:.55rem;">
+        <button class="btn btn-ghost" id="btnCamera" type="button">📸 用相机拍</button>
+        <button class="btn btn-ghost" id="btnPick" type="button">选择文件</button>
+        <button class="btn btn-ghost" id="btnUseSample" type="button">载入 demo 图片</button>
+      </div>
+
+      <div class="preview" id="preview" hidden></div>
+
+      <label class="label" for="examSelect">评分体系 <span class="en">Scoring System</span></label>
+      <select id="examSelect"></select>
+
+      <label class="label" for="studentId">匿名学号 <span class="en">student_id · 可选</span></label>
+      <input type="text" id="studentId" placeholder="例如 anon_demo_01（不填则不进入学习档案）" autocomplete="off" spellcheck="false">
+
+      <div class="row" style="margin-top:1rem;">
+        <button class="btn btn-primary" id="btnUpload" disabled>上传并批改</button>
+        <span class="status" id="uploadState"></span>
+      </div>
+      <div class="bar" id="barWrap" hidden><i id="bar"></i></div>
+    </section>
+
+    <!-- ============ 右：结果 ============ -->
+    <section class="card card-pad" id="resultCard">
+      <div class="empty" id="empty">
+        <p style="font-size:1.6rem;margin:0;opacity:.4;">📄</p>
+        <p style="margin:.5rem 0 0;"><b>结果会显示在这里</b></p>
+        <p style="font-size:.76rem;color:#94a3b8;margin:.3rem 0 0;">
+          你将看到：原图 / OCR 原文 / 标准化文本 / 预处理报告 / 五维评分与评语
+        </p>
+      </div>
+      <div id="result" hidden></div>
+    </section>
+  </div>
+</div>
+
+<footer class="site">
+  <div><b>English Essay Grader</b> · 多模态模块 · 评分逻辑复用 <code>index.html</code> 内的现有引擎，本页不含任何打分公式</div>
+  <div style="margin-top:.25rem;">AI 参考分，仅供学习，不能替代官方人工阅卷 · MIT License</div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================================
+ * 多模态上传页逻辑
+ * - 只负责「采集 + 展示 + 调用接口」，不实现任何评分/评语逻辑
+ * - API 基址：同源优先；file:// 打开时默认 http://localhost:8787
+ * ========================================================================== */
+const API_BASE = (() => {
+  const q = new URLSearchParams(location.search).get('api');
+  if (q) return q.replace(/\/+$/, '');
+  try {
+    const saved = localStorage.getItem('eg_api_base');
+    if (saved) return saved.replace(/\/+$/, '');
+  } catch (e) {}
+  return location.protocol === 'file:' ? 'http://localhost:8787' : '';
+})();
+
+const $ = id => document.getElementById(id);
+let selectedFile = null;
+let lastSubmission = null;
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+async function api(path, options) {
+  const res = await fetch(API_BASE + path, options);
+  let body = null;
+  try { body = await res.json(); } catch (e) {}
+  if (!res.ok) {
+    const msg = (body && body.error && body.error.message) || ('HTTP ' + res.status);
+    const err = new Error(msg);
+    err.body = body;
+    err.status = res.status;
+    throw err;
+  }
+  return body;
+}
+
+/* ---------------- 初始化 ---------------- */
+async function init() {
+  try {
+    const health = await api('/api/health');
+    $('engineState').textContent = '服务已连接 · 引擎 ' + health.ocr_engine;
+  } catch (e) {
+    $('engineState').textContent = '未连接后端服务';
+    $('btnUpload').disabled = true;
+    $('empty').innerHTML = '<p style="font-size:1.6rem;margin:0;opacity:.4;">🔌</p>' +
+      '<p style="margin:.5rem 0 0;"><b>没有连上本地服务</b></p>' +
+      '<p style="font-size:.78rem;color:#94a3b8;margin:.4rem 0 0;">' +
+      '在项目根目录运行 <code>npm start</code>，然后刷新本页。<br>' +
+      '（本页需要后端做 OCR 与文件存储，纯前端无法独立完成）</p>';
+    return;
+  }
+
+  // 评分体系下拉：数据来自现有引擎，不在前端重复维护一份
+  try {
+    const data = await api('/api/multimodal/exams');
+    $('examSelect').innerHTML = data.exams.map(e =>
+      '<option value="' + e.key + '">' + e.name + '（满分 ' + e.totalMax + '）</option>'
+    ).join('');
+    $('examSelect').value = 'cet4';
+  } catch (e) {
+    $('examSelect').innerHTML = '<option value="cet4">CET4（默认）</option>';
+  }
+
+  try {
+    const saved = localStorage.getItem('eg_student_id');
+    if (saved) $('studentId').value = saved;
+  } catch (e) {}
+
+  // 支持 ?submission=<id> 直接打开历史结果（便于课堂回看、也便于把链接发给学生）
+  const history = new URLSearchParams(location.search).get('submission');
+  if (history) {
+    try {
+      const out = await api('/api/multimodal/submissions/' + encodeURIComponent(history));
+      lastSubmission = out.submission;
+      if (out.submission.exam_key) $('examSelect').value = out.submission.exam_key;
+      render(out.submission);
+    } catch (e) {
+      toast('打开该提交失败：' + e.message);
+    }
+  }
+}
+
+/* ---------------- 选择文件 ---------------- */
+$('btnPick').onclick = () => $('fileInput').click();
+$('btnCamera').onclick = () => $('cameraInput').click();
+$('drop').onclick = () => $('fileInput').click();
+$('drop').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') $('fileInput').click(); };
+$('fileInput').onchange = e => { if (e.target.files[0]) setFile(e.target.files[0]); };
+$('cameraInput').onchange = e => { if (e.target.files[0]) setFile(e.target.files[0]); };
+
+['dragenter', 'dragover'].forEach(ev => $('drop').addEventListener(ev, e => {
+  e.preventDefault(); $('drop').classList.add('over');
+}));
+['dragleave', 'drop'].forEach(ev => $('drop').addEventListener(ev, e => {
+  e.preventDefault(); $('drop').classList.remove('over');
+}));
+$('drop').addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0];
+  if (f) setFile(f);
+});
+
+function setFile(file) {
+  const ok = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'].includes(file.type);
+  if (!ok) { toast('只支持 PNG / JPG / WebP / PDF'); return; }
+  if (file.size > 12 * 1024 * 1024) { toast('文件超过 12MB'); return; }
+  selectedFile = file;
+  $('btnUpload').disabled = false;
+  $('uploadState').textContent = file.name + ' · ' + (file.size / 1024).toFixed(0) + ' KB';
+
+  const box = $('preview');
+  box.hidden = false;
+  if (file.type === 'application/pdf') {
+    box.innerHTML = '<div class="banner ok" style="margin:0;">📄 已选择 PDF：<b>' + escapeHtml(file.name) + '</b>（预览需后端抽帧，这里仅显示文件名）</div>';
+  } else {
+    const url = URL.createObjectURL(file);
+    box.innerHTML = '<img alt="上传预览" src="' + url + '">';
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* demo 图片：从仓库 sample_data 取，方便课堂演示 */
+$('btnUseSample').onclick = async () => {
+  const name = 'printed_sample.png';
+  try {
+    const res = await fetch(API_BASE + '/sample_data/images/' + name);
+    if (!res.ok) throw new Error('取不到 demo 图片');
+    const blob = await res.blob();
+    setFile(new File([blob], name, { type: 'image/png' }));
+    toast('已载入 demo 印刷体图片（夹具回放用）');
+  } catch (e) {
+    toast('载入失败：' + e.message);
+  }
+};
+
+/* ---------------- 上传（XHR 才有进度） ---------------- */
+$('btnUpload').onclick = () => {
+  if (!selectedFile) { toast('请先选择文件'); return; }
+
+  const form = new FormData();
+  form.append('file', selectedFile);
+  form.append('exam_key', $('examSelect').value);
+  const sid = $('studentId').value.trim();
+  if (sid) form.append('student_id', sid);
+
+  $('btnUpload').disabled = true;
+  $('barWrap').hidden = false;
+  $('bar').style.width = '0%';
+  $('uploadState').textContent = '上传中…';
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', API_BASE + '/api/multimodal/upload');
+  xhr.upload.onprogress = e => {
+    if (e.lengthComputable) {
+      const pct = Math.round((e.loaded / e.total) * 100);
+      $('bar').style.width = pct + '%';
+      $('uploadState').textContent = '上传中… ' + pct + '%';
+    }
+  };
+  xhr.onload = () => {
+    $('btnUpload').disabled = false;
+    let body = null;
+    try { body = JSON.parse(xhr.responseText); } catch (e) {}
+    if (xhr.status >= 200 && xhr.status < 300) {
+      $('bar').style.width = '100%';
+      $('uploadState').textContent = '完成';
+      if (sid) { try { localStorage.setItem('eg_student_id', sid); } catch (e) {} }
+      lastSubmission = body.submission;
+      render(body.submission);
+      toast('批改完成');
+    } else {
+      $('barWrap').hidden = true;
+      $('uploadState').textContent = '失败';
+      showError(body, xhr.status);
+    }
+  };
+  xhr.onerror = () => {
+    $('btnUpload').disabled = false;
+    $('barWrap').hidden = true;
+    $('uploadState').textContent = '网络错误';
+    toast('上传失败：无法连接服务');
+  };
+  xhr.send(form);
+};
+
+function showError(body, status) {
+  const msg = (body && body.error && body.error.message) || ('请求失败 (' + status + ')');
+  const code = (body && body.error && body.error.code) || '';
+  const details = body && body.error && body.error.details;
+  $('empty').hidden = true;
+  $('result').hidden = false;
+  $('result').innerHTML =
+    '<div class="banner err"><b>识别/批改未完成：</b>' + escapeHtml(msg) +
+    (code ? '<br><span style="font-size:.72rem;opacity:.8;">错误码：' + escapeHtml(code) + '</span>' : '') +
+    '</div>' +
+    (details && details.ocr_text
+      ? '<div class="sec-title">OCR 原始输出（可能为空）</div><div style="font-size:.76rem;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:.6rem;">' +
+        escapeHtml(details.ocr_text || '(空)') + '</div>'
+      : '') +
+    '<p style="font-size:.76rem;color:#94a3b8;margin-top:.8rem;">提示：默认 <code>mock</code> 引擎只能回放 demo 夹具图片；' +
+    '真实拍照请按 <code>.env.example</code> 配置 OCR 引擎。</p>';
+}
+
+/* ---------------- 渲染结果 ---------------- */
+function render(sub) {
+  const g = sub.grading;
+  $('empty').hidden = true;
+  $('result').hidden = false;
+
+  const reviewBanner = sub.needs_review
+    ? '<div class="banner warn"><b>⚠️ 需人工复核（needs_review）：</b>' +
+      escapeHtml(sub.review_reasons.join('；')) +
+      '<br><span style="font-size:.72rem;">下方评分仍然基于当前识别文本，未必反映原文，请先核对再使用。</span></div>'
+    : '<div class="banner ok">识别置信度 ' + (sub.ocr_confidence === null ? '（引擎未提供）' : sub.ocr_confidence.toFixed(2)) +
+      '，未触发人工复核。</div>';
+
+  const rpt = sub.preprocess_report || {};
+  const corrections = (rpt.corrections || []).map(c =>
+    '<li><b>' + escapeHtml(c.type) + '</b> ×' + c.count + ' — ' + escapeHtml(c.note) +
+    (c.samples && c.samples.length ? '（例：' + c.samples.slice(0, 2).map(escapeHtml).join('；') + '）' : '') + '</li>'
+  ).join('') || '<li style="color:#94a3b8;">未做任何修改（文本已经很干净）</li>';
+
+  const warnings = (rpt.warnings || []).map(w => '<li>' + escapeHtml(w) + '</li>').join('')
+    || '<li style="color:#94a3b8;">无</li>';
+
+  const steps = (rpt.steps || []).map(s =>
+    '<li>' + (s.applied ? '✅' : '➖') + ' <b>' + escapeHtml(s.name) + '</b> — ' + escapeHtml(s.note) + '</li>'
+  ).join('');
+
+  const dims = g.dims.map(d =>
+    '<div class="dim"><div>' + escapeHtml(d.zh) +
+    '<span style="color:#94a3b8;font-size:.7rem;"> (' + escapeHtml(d.en) + ')</span>' +
+    (d.counted ? '' : '<span class="pill" style="margin-left:.3rem;">辅助</span>') + '</div>' +
+    '<div class="val">' + d.score + '/' + d.max + ' · ' + d.normalized.toFixed(1) + '</div>' +
+    '<div class="track" style="grid-column:1/-1;"><i style="width:' + (d.ratio * 100).toFixed(1) + '%"></i></div></div>'
+  ).join('');
+
+  const cmt = (title, cls, arr) => arr && arr.length
+    ? '<div class="cmt ' + cls + '"><h4>' + title + '</h4>' +
+      arr.map(x => '<div>· ' + escapeHtml(x) + '</div>').join('') + '</div>'
+    : '';
+
+  $('result').innerHTML =
+    reviewBanner +
+    '<div class="row" style="justify-content:space-between;align-items:flex-end;">' +
+      '<div><div style="font-size:.7rem;font-weight:700;color:#94a3b8;">TOTAL · 总分</div>' +
+      '<div class="big">' + g.total + '<span style="font-size:.9rem;color:#94a3b8;font-weight:600;"> / ' + g.totalMax + '</span></div></div>' +
+      '<div style="text-align:right;"><span class="pill">' + escapeHtml(sub.exam_name) + '</span>' +
+      '<div style="font-size:.74rem;color:#475569;margin-top:.3rem;">' + escapeHtml(g.band.label) + '</div></div>' +
+    '</div>' +
+    '<p style="font-size:.78rem;color:#475569;margin:.5rem 0 .9rem;">' + escapeHtml(g.band.desc) + '</p>' +
+    '<div class="sec-title">五维得分 <em>Dimensions</em></div>' + dims +
+    '<div class="sec-title">识别与预处理报告 <em>Preprocess Report</em></div>' +
+    '<table class="kv">' +
+      '<tr><th>OCR 引擎</th><td>' + escapeHtml(sub.ocr_engine || '-') + '</td></tr>' +
+      '<tr><th>置信度</th><td>' + (sub.ocr_confidence === null ? '未提供' : sub.ocr_confidence.toFixed(3)) +
+        '（阈值 ' + (rpt.confidence_threshold ?? '-') + '）</td></tr>' +
+      '<tr><th>原图</th><td><a href="' + escapeHtml(sub.original_url || '#') + '" target="_blank" rel="noopener">查看原图</a> · ' +
+        (sub.bytes ? (sub.bytes / 1024).toFixed(0) + ' KB' : '-') + '</td></tr>' +
+      '<tr><th>SHA-256</th><td><code>' + escapeHtml((sub.sha256 || '').slice(0, 16)) + '…</code>（用于追溯同一张图）</td></tr>' +
+      '<tr><th>段落 / 词数</th><td>' + (rpt.stats ? rpt.stats.paragraphs + ' 段 / ' + rpt.stats.words + ' 词' : '-') + '</td></tr>' +
+    '</table>' +
+    '<details open><summary>修正记录（' + (rpt.corrections || []).length + ' 类）</summary><ul class="tight">' + corrections + '</ul></details>' +
+    '<details><summary>告警（' + (rpt.warnings || []).length + '）</summary><ul class="tight">' + warnings + '</ul></details>' +
+    '<details><summary>处理步骤</summary><ul class="tight">' + steps + '</ul></details>' +
+    '<div class="sec-title">识别文本（可编辑后重新评分） <em>OCR → Normalized</em></div>' +
+    '<textarea id="editText">' + escapeHtml(sub.normalized_text || '') + '</textarea>' +
+    '<div class="row" style="margin-top:.55rem;">' +
+      '<button class="btn btn-primary" id="btnConfirm">用校对后的文本重新评分</button>' +
+      '<span class="status" id="confirmState">' + (sub.confirmed ? '已人工确认' : '修改后点这里，会保留 OCR 原文以便追溯') + '</span>' +
+    '</div>' +
+    '<div class="sec-title">评语 <em>Feedback</em></div>' +
+    cmt('① 优点总结', 'good', g.comment.strengths) +
+    cmt('② 问题诊断', 'bad', g.comment.problems) +
+    cmt('③ 修改建议', 'tip', g.comment.advice) +
+    '<p style="font-size:.72rem;color:#94a3b8;margin-top:1rem;">' +
+      '本页分数由项目现有评分引擎计算（与文本批改同一套逻辑），属于 AI 参考分，仅供学习，不能替代官方人工阅卷。</p>';
+
+  $('btnConfirm').onclick = () => confirmText(sub.id);
+}
+
+async function confirmText(id) {
+  const text = $('editText').value.trim();
+  if (text.length < 20) { toast('文本太短'); return; }
+  $('btnConfirm').disabled = true;
+  $('confirmState').textContent = '重新评分中…';
+  try {
+    const out = await api('/api/multimodal/submissions/' + id + '/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ normalized_text: text })
+    });
+    render(out.submission);
+    toast('已用校对后的文本重新评分');
+  } catch (e) {
+    $('btnConfirm').disabled = false;
+    $('confirmState').textContent = '失败';
+    toast('重新评分失败：' + e.message);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
